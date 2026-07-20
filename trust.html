@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Hunger System — Premium Trust Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* Premium Trust Portal Specific Styles */
+  body {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: #f8fafc;
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+  }
+  
+  .navbar {
+    background: rgba(15, 23, 42, 0.8) !important;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .nav-brand { color: #f8fafc !important; }
+  
+  .premium-dash {
+    max-width: 900px;
+    margin: 80px auto 40px;
+    padding: 0 20px;
+  }
+  
+  .trust-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  
+  .trust-icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #fbbf24, #d97706);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+    box-shadow: 0 4px 15px rgba(217, 119, 6, 0.3);
+  }
+  
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 24px -4px rgba(0,0,0,0.3);
+    transition: transform 0.3s ease;
+  }
+  
+  .glass-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  .glass-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .glass-head h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: #e2e8f0;
+  }
+  
+  .glass-input {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #f8fafc !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    transition: all 0.3s ease;
+  }
+  
+  .glass-input:focus {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2) !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+  }
+  
+  .glass-label {
+    color: #94a3b8 !important;
+    font-weight: 500 !important;
+    margin-bottom: 8px !important;
+    display: block;
+    font-size: 0.9rem;
+  }
+  
+  .premium-btn {
+    background: linear-gradient(135deg, #38bdf8, #2563eb);
+    border: none;
+    color: white;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    width: 100%;
+    font-family: 'Outfit', sans-serif;
+  }
+  
+  .premium-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+    background: linear-gradient(135deg, #7dd3fc, #3b82f6);
+  }
+  
+  .upload-zone-premium {
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .upload-zone-premium:hover {
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.05);
+  }
+  
+  /* Select styling override */
+  select.glass-input option {
+    background: #0f172a;
+    color: #fff;
+  }
+</style>
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+<div class="toast-wrap" id="toasts"></div>
+<nav class="navbar" id="main-navbar">
+  <div class="nav-brand" onclick="goBack()" style="cursor:pointer">
+    <div class="nav-dot" style="background:#38bdf8"></div><span style="font-size:1.1rem;margin-right:8px">←</span> Home
+  </div>
+  <div class="nav-right">
+    <span class="nav-user" id="nav-uname" style="color:#e2e8f0"></span>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;border:none" onclick="openSettingsModal()">⚙️ Settings</button>
+    <button class="btn btn-sm btn-ghost" onclick="doLogout()">🚪 Logout</button>
+  </div>
+</nav>
+
+<div class="chat-wrap" id="chat-wrap">
+  <div class="chat-box" id="chat-box">
+    <div class="chat-head">
+      <h4>🤖 <span>Zero Hunger AI Assistant</span></h4>
+      <button class="x-btn" style="background:rgba(255,255,255,.15);color:#fff" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="chat-msg bot">👋 Hello! I'm your Zero Hunger P2P AI assistant. Ask me about donations, requests, volunteers, trust scores, or routing!</div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ask anything…" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" style="background:#f8fafc;color:var(--g1);border:1px solid var(--border);box-shadow:none" onclick="startChatVoice('chat-input', true)" title="Voice to AI">🎤</button>
+      <button class="chat-send" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+  <button class="chat-toggle" onclick="toggleChat()" id="chat-toggle-btn" title="AI Assistant">🤖</button>
+</div>
+
+<div id="trust-page" class="page active">
+  <div class="premium-dash">
+    
+    <div class="trust-header">
+      <div class="trust-icon">🏛️</div>
+      <div style="flex:1">
+        <h2 style="margin:0;font-size:1.8rem;font-weight:700;background:linear-gradient(to right, #f8fafc, #94a3b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;" id="trust-name">Premium Trust Portal</h2>
+        <div style="font-size:0.95rem;color:#94a3b8;margin-top:4px">Verified Requester & NGO Dashboard</div>
+      </div>
+      <div id="trust-status-badge">
+        <span style="background:rgba(245, 158, 11, 0.15);color:#fbbf24;padding:8px 16px;border-radius:99px;font-size:0.85rem;font-weight:600;border:1px solid rgba(245, 158, 11, 0.3);box-shadow:0 0 10px rgba(245, 158, 11, 0.1)">⚠️ Unverified Entity</span>
+      </div>
+    </div>
+
+    <!-- AI CERTIFICATE VERIFICATION -->
+    <div class="glass-card" id="cert-verify-section">
+      <div class="glass-head">
+        <span style="font-size:1.5rem">🔐</span>
+        <h3>AI Document Verification</h3>
+      </div>
+      <div>
+        <p style="font-size:.9rem;color:#cbd5e1;margin-bottom:20px;line-height:1.5">Secure your organization's identity. Upload your official NGO/Trust registration certificate. Our AI will analyze the document authenticity instantly to unlock monetary fund requests.</p>
+        
+        <input type="file" id="cert-img-upload" accept="image/*" style="display:none" onchange="doCertUpload(this.files[0])">
+        <div class="upload-zone-premium" onclick="byId('cert-img-upload').click()">
+          <div style="font-size:3rem;margin-bottom:12px;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.3))">📄</div>
+          <div style="font-weight:600;font-size:1.1rem;color:#f8fafc">Tap to upload Certificate</div>
+          <div style="font-size:.8rem;color:#64748b;margin-top:8px">Supports High-Res JPG, PNG</div>
+        </div>
+        
+        <img id="cert-img-prev" style="width:100%;max-height:300px;object-fit:contain;border-radius:12px;margin-top:20px;display:none;background:rgba(0,0,0,0.3);padding:10px">
+        
+        <button id="verify-cert-btn" class="premium-btn" style="margin-top:20px;display:none;background:linear-gradient(135deg, #10b981, #059669);box-shadow:0 4px 15px rgba(16, 185, 129, 0.3)" onclick="runCertVerification()">✨ Initialize AI Verification</button>
+        
+        <div id="cert-verify-res" style="margin-top:16px"></div>
+      </div>
+    </div>
+
+    <!-- REQUEST NEEDS (FOOD / FUNDS) -->
+    <div class="glass-card">
+      <div class="glass-head">
+        <span style="font-size:1.5rem">📢</span>
+        <h3>Publish Request (Food / Funds)</h3>
+      </div>
+      <div>
+        <form id="trust-req-form" onsubmit="submitTrustRequest(event)">
+          <div class="fg">
+            <label class="glass-label">Request Category *</label>
+            <select id="treq-type" class="glass-input" onchange="toggleTrustReqType()">
+              <option value="food">🍱 Community Food Request</option>
+              <option value="funds">💰 Monetary Funding (Verified Only)</option>
+            </select>
+          </div>
+          
+          <!-- Food Fields -->
+          <div id="treq-food-fields">
+            <div class="fg">
+              <label class="glass-label">Requirement Details (Select available or default) *</label>
+              <select id="treq-food-sel" class="glass-input">
+                <option value="">-- Select Food Item --</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="glass-label">Quantity / Beneficiaries *</label>
+              <input type="number" id="treq-food-qty" class="glass-input" placeholder="Units required" min="1">
+            </div>
+            <div class="fg">
+              <label class="glass-label">Delivery Location *</label>
+              <div style="display:flex;gap:10px">
+                <input type="text" id="treq-loc" class="glass-input" placeholder="e.g. Anna Nagar, Madurai" style="flex:1">
+                <button type="button" class="premium-btn" style="width:auto;padding:12px;background:rgba(255,255,255,0.1);box-shadow:none" onclick="autoFillTrustLocation()" title="Auto Detect Location">📍</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Fund Fields -->
+          <div id="treq-fund-fields" style="display:none">
+            <div id="fund-lock-msg" style="padding:14px;background:rgba(239, 68, 68, 0.1);color:#fca5a5;border:1px solid rgba(239, 68, 68, 0.2);border-radius:12px;font-size:.9rem;margin-bottom:20px;display:block">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:1.4rem">🔒</span>
+                <div>
+                  <strong style="color:#f87171">Action Locked</strong><br>
+                  You must complete AI document verification to access monetary requests.
+                </div>
+              </div>
+            </div>
+            <div id="fund-input-fields" style="opacity:0.4;pointer-events:none;transition:all 0.3s ease">
+              <div class="fg">
+                <label class="glass-label">Amount Required (₹) *</label>
+                <input type="number" id="treq-fund-amount" class="glass-input" placeholder="e.g. 25000" disabled>
+              </div>
+              <div class="fg">
+                <label class="glass-label">Purpose of Funds *</label>
+                <input type="text" id="treq-fund-purpose" class="glass-input" placeholder="e.g. Shelter renovation & medical supplies" disabled>
+              </div>
+              <div class="fg">
+                <label class="glass-label">Official Trust UPI ID *</label>
+                <input type="text" id="treq-fund-upi" class="glass-input" placeholder="e.g. trust@paytm" disabled>
+              </div>
+            </div>
+          </div>
+          
+          <button type="submit" id="treq-submit-btn" class="premium-btn" style="margin-top:10px">🚀 Publish Request to Network</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- INCOMING DONATIONS -->
+    <div class="glass-card">
+      <div class="glass-head">
+        <span style="font-size:1.5rem">📬</span>
+        <h3>Donation & Fulfillment Status</h3>
+      </div>
+      <div>
+        <div id="trust-donations-list">
+           <div style="text-align:center;padding:40px;opacity:0.5">
+             <div style="font-size:3rem;margin-bottom:10px">📭</div>
+             <p style="margin:0;font-size:0.95rem">No donations or fulfillments recorded yet.</p>
+           </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api_keys.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
+
+
+

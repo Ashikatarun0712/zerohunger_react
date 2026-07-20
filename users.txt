@@ -1,0 +1,22 @@
+Sapadu Demo Users
+=================
+
+Admin Account:
+Username: admin1
+Password: pass123
+Role: System Administrator (Has access to charts and full system data)
+
+Donor Account:
+Username: john_donor
+Password: pass123
+Role: Community Member (Has dummy donations and trust scores ready)
+
+Receiver Account:
+Username: jane_req
+Password: pass123
+Role: Community Member
+
+Volunteer Account:
+Username: mike_vol
+Password: pass123
+Role: Community Member

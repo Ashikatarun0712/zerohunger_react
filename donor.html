@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Hunger System — P2P AI Food Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+<div class="toast-wrap" id="toasts"></div>
+<nav class="navbar" id="main-navbar" >
+  <div class="nav-brand"><div class="nav-dot"></div>Zero Hunger P2P</div>
+  <div class="nav-right">
+    <span class="nav-user" id="nav-uname"></span>
+    <span class="notif-badge" id="notif-count" onclick="openNotifModal()">0</span>
+    <button class="btn btn-sm btn-ghost" onclick="openSettingsModal()">⚙️ Settings</button>
+    <button class="btn btn-sm btn-ghost" onclick="doLogout()">🚪 Logout</button>
+  </div>
+</nav>
+<div class="chat-wrap" id="chat-wrap" >
+  <div class="chat-box" id="chat-box">
+    <div class="chat-head">
+      <h4>🤖 <span>Zero Hunger AI Assistant</span></h4>
+      <button class="x-btn" style="background:rgba(255,255,255,.15);color:#fff" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="chat-msg bot">👋 Hello! I'm your Zero Hunger P2P AI assistant. Ask me about donations, requests, volunteers, trust scores, or routing!</div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ask anything…" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" style="background:#f8fafc;color:var(--g1);border:1px solid var(--border);box-shadow:none" onclick="startChatVoice('chat-input', true)" title="Voice to AI">🎤</button>
+      <button class="chat-send" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+  <button class="chat-toggle" onclick="toggleChat()" id="chat-toggle-btn" title="AI Assistant">🤖</button>
+</div>
+<div id="donor-page" class="page active">
+  <div class="dash-wrap">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button class="btn btn-outline btn-sm" onclick="goBack()">← Back</button>
+      <h2 class="sec-title" style="margin:0">🎁 Donor Module</h2>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-head"><h3>📝 Donation Form</h3></div>
+        <div class="card-body">
+          <form id="donate-form">
+              <div class="fg"><label>Your Name *</label><input name="donor_name" placeholder="Full name" required></div>
+                        <div class="fg">
+              <label>Item Category *</label>
+              <select name="item_category" id="item-category-sel" onchange="onCategoryChange()">
+                <option value="auto">🤖 Auto-Detect (AI)</option>
+                <option value="cooked">🍚 Cooked Food (Expires Fast)</option>
+                <option value="raw">🥕 Raw Food / Veggies</option>
+                <option value="packaged">📦 Packaged / Preserved Food</option>
+                <option value="material">👕 Non-Food / Material (Clothes, Books, etc.)</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label style="display:flex;align-items:center;justify-content:space-between">
+                Item Name *
+                <span id="food-type-pill" style="display:none"></span>
+              </label>
+              <input name="food_name" id="food-name-inp" placeholder="e.g. Rice, Clothes, Books, Carrot…" required oninput="onFoodNameInput(this.value)" autocomplete="off">
+            </div>
+            <div id="expiry-predict-box"></div>
+            <div class="row2">
+              <div class="fg"><label>Quantity (units) *</label><input name="quantity" type="number" min="1" placeholder="e.g. 50" required></div>
+              <div class="fg"><label>Location *</label><input name="location_text" placeholder="e.g. Anna Nagar, Madurai" required></div>
+            </div>
+            <div class="row2">
+              <div class="fg"><label>Manufacturing Date *</label><input name="mfg_date" id="don-mfg-date" type="date" required></div>
+              <div class="fg"><label>Expiry Date * <span id="expiry-ai-badge" style="display:none;font-size:.68rem;font-weight:700;background:linear-gradient(90deg,#065f46,#0d9488);color:#fff;padding:2px 7px;border-radius:99px;margin-left:4px">🤖 AI</span></label>
+                <input name="expiry_date" id="don-expiry-date" type="date" required></div>
+            </div>
+            <div class="fg"><label>Payment Method *</label>
+              <select name="payment_type" id="pay-type-select" onchange="togglePaySection()">
+                <option value="">-- Select Payment --</option>
+                <option value="physical">💵 Physical</option>
+                <option value="online">💳 Online / UPI</option>
+              </select>
+            </div>
+            <div id="pay-physical" style="display:none;background:var(--g5);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px">
+              <div style="font-weight:700;font-size:.85rem;margin-bottom:8px">💵 Physical Details</div>
+              <div class="fg" style="margin-bottom:0"><label>Notes</label><input name="phy_notes" placeholder="Notes about cash payment"></div>
+            </div>
+            <div id="pay-online" style="display:none;background:#eff6ff;border-radius:var(--radius-sm);padding:14px;margin-bottom:14px">
+              <div style="font-weight:700;font-size:.85rem;margin-bottom:8px;color:var(--b1)">💳 Online Payment</div>
+              <div class="row2">
+                <div class="fg" style="margin-bottom:0"><label>Amount (₹)</label><input name="onl_amount" type="number" placeholder="Amount"></div>
+                <div class="fg" style="margin-bottom:0"><label>UPI / Transaction ID</label><input name="onl_txn" placeholder="UPI ref / Txn ID"></div>
+              </div>
+              <div class="fg" style="margin-top:10px;margin-bottom:0"><label>Payment Mode</label>
+                <select name="onl_mode"><option>UPI (PhonePe / GPay)</option><option>Credit / Debit Card</option><option>Net Banking</option><option>Wallet</option></select>
+              </div>
+              <div style="margin-top:10px;padding:10px;background:#fff;border-radius:8px;text-align:center;font-size:.78rem;color:var(--txt3)">📱 UPI ID: <strong style="color:var(--b1)">zerohunger@upi</strong></div>
+            </div>
+            <div id="fresh-hint" style="font-size:.78rem;color:var(--t1);margin-bottom:10px"></div>
+            <button type="submit" class="btn btn-primary btn-full">📤 Submit Donation</button>
+          </form>
+          <div id="don-ai-res" style="margin-top:14px"></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <div class="card-head"><h3>🤖 AI Vision Analysis</h3><span class="badge bg-t">MobileNet CNN</span></div>
+          <div class="card-body">
+            <div class="ai-box" style="margin-bottom:14px">
+              <div class="ai-dot">TensorFlow.js · MobileNet v2</div>
+              <p style="font-size:.8rem;opacity:.75;margin-top:4px">Pretrained CNN classifies food freshness into <strong>Fresh / Medium / Spoiled</strong> with confidence %. Upload image or drag & drop.</p>
+            </div>
+            <div class="upload-zone" onclick="document.getElementById('img-inp').click()" ondragover="this.classList.add('drag');event.preventDefault()" ondragleave="this.classList.remove('drag')" ondrop="this.classList.remove('drag');doImgUpload(event.dataTransfer.files[0])">
+              <input type="file" id="img-inp" accept="image/*" onchange="doImgUpload(this.files[0])">
+              <div style="font-size:2.5rem;margin-bottom:8px">📷</div>
+              <p style="font-size:.85rem"><strong>Click or drag & drop</strong> food image</p>
+              <p style="font-size:.75rem;color:var(--txt3);margin-top:4px">JPG, PNG, WEBP · Analyzed by MobileNet CNN</p>
+            </div>
+            <img id="img-prev" style="display:none;width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-top:10px" alt="Preview">
+            <button id="deep-scan-btn" class="btn btn-primary btn-full" style="margin-top:10px;display:none" onclick="runDeepScan()">⚡ Analyze Freshness (MobileNet CNN)</button>
+            <div id="vision-res" style="margin-top:10px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>🧠 AI Freshness Classification</h3></div>
+          <div class="card-body" style="padding:14px">
+            <div style="font-size:.78rem;color:var(--txt2);margin-bottom:10px">MobileNet CNN visual classification labels:</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#ecfdf5;border-radius:8px;border-left:3px solid #22c55e">
+                <span style="font-size:1.4rem">✅</span>
+                <div><div style="font-size:.78rem;font-weight:700;color:#065f46">Fresh</div><div style="font-size:.72rem;color:#047857">Vibrant colors, firm texture, no discoloration detected</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fffbeb;border-radius:8px;border-left:3px solid #f59e0b">
+                <span style="font-size:1.4rem">⚠️</span>
+                <div><div style="font-size:.78rem;font-weight:700;color:#78350f">Medium</div><div style="font-size:.72rem;color:#92400e">Some aging signs detected — distribute soon</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fff1f2;border-radius:8px;border-left:3px solid #ef4444">
+                <span style="font-size:1.4rem">❌</span>
+                <div><div style="font-size:.78rem;font-weight:700;color:#991b1b">Spoiled</div><div style="font-size:.72rem;color:#b91c1c">Mold, rot, or decay detected — do not distribute</div></div>
+              </div>
+            </div>
+            <div style="margin-top:10px;padding:8px 10px;background:#f8fafc;border-radius:8px;font-size:.72rem;color:var(--txt3)">
+              🧠 Model: MobileNet v2 (ImageNet pretrained) · Adapted via TensorFlow.js · Runs 100% in browser
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>📍 Your Live Location</h3><span class="loc-tag"><span class="loc-dot"></span>Tracking</span></div>
+          <div class="card-body" style="padding:10px">
+            <div id="donor-map" style="height:180px;border-radius:8px"></div>
+            <div id="donor-loc-txt" style="font-size:.78rem;color:var(--txt3);margin-top:8px;text-align:center">Getting your location…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <div class="card-head"><h3>🏛️ Trust Fund Requests</h3><button class="btn btn-sm btn-outline" onclick="renderTrustFunds()">🔄 Refresh</button></div>
+      <div class="card-body table-responsive" style="padding:0">
+        <table class="tbl">
+          <thead><tr><th>Trust Name</th><th>Purpose</th><th>Amount (₹)</th><th>UPI ID</th><th>Action</th></tr></thead>
+          <tbody id="trust-funds-tbody"><tr><td colspan="5" class="empty">No active fund requests from Trusts.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <div class="card-head"><h3>📋 All Donations</h3><button class="btn btn-sm btn-outline" onclick="syncDatabase().then(()=>renderDonTbl()).then(()=>toast('Refreshed from Supabase','ok'))">🔄 Refresh</button></div>
+      <div class="card-body table-responsive" style="padding:0">
+        <table class="tbl">
+          <thead><tr><th>Donor</th><th>Food</th><th>Type</th><th>Qty</th><th>Freshness</th><th>Distance</th><th>Expires</th><th>Location</th><th>Payment</th><th>Trust</th><th>Status</th></tr></thead>
+          <tbody id="don-tbody"><tr><td colspan="12" class="empty">No donations yet.</td></tr></tbody>
+        </table>
+        <div id="db-debug" style="font-size:.75rem;color:#888;padding:6px 12px;background:#f8fafc;border-top:1px solid #e2e8f0">Connecting to Supabase...</div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/api_keys.js?v=6"></script>
+<script src="js/app.js?v=6"></script>
+</body>
+</html>

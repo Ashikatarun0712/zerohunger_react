@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Hunger System — P2P AI Food Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+<div class="toast-wrap" id="toasts"></div>
+<div id="login-page" class="page active">
+  <div class="login-card" style="max-width:460px">
+    <div class="login-logo">
+      <div class="licon">🌱</div>
+      <div>
+        <h1 style="font-family:'Bricolage Grotesque',sans-serif;font-size:1.4rem;color:var(--g1)">Zero Hunger P2P</h1>
+        <span style="font-size:.78rem;color:var(--txt3)">AI-Enhanced Community Food Network</span>
+      </div>
+    </div>
+    <div style="display:flex;background:var(--border);border-radius:var(--radius-sm);padding:3px;margin-bottom:22px">
+      <button id="tab-signin" onclick="switchAuthTab('signin')" style="flex:1;padding:8px;border:none;border-radius:8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;background:linear-gradient(135deg,var(--g2),var(--t1));color:#fff;transition:all .2s">🔐 Sign In</button>
+      <button id="tab-signup" onclick="switchAuthTab('signup')" style="flex:1;padding:8px;border:none;border-radius:8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;background:transparent;color:var(--txt2);transition:all .2s">✏️ Sign Up</button>
+    </div>
+    <div id="auth-signin">
+      <form id="login-form">
+        <div class="fg"><label>Email / Username</label><input id="lu" type="text" placeholder="Enter email or username" autocomplete="username"></div>
+        <div class="fg"><label>Password</label><input id="lp" type="password" placeholder="Enter password" autocomplete="current-password"></div>
+        <div id="lerr" style="color:var(--r1);font-size:.8rem;margin-bottom:12px;min-height:18px"></div>
+        <button type="submit" class="btn btn-primary btn-full">🔐 Sign In</button>
+      </form>
+      <p style="text-align:center;margin-top:14px;font-size:.8rem;color:var(--txt3)">No account? <a href="#" onclick="switchAuthTab('signup');return false" style="color:var(--g2);font-weight:600">Sign Up →</a></p>
+    </div>
+    <div id="auth-signup" style="display:none">
+      <form id="signup-form">
+          <div class="fg"><label>Full Name / Trust Name *</label><input id="su-name" type="text" placeholder="Your full name or Trust name" required></div>
+        <div class="fg"><label>Email *</label><input id="su-email" type="email" placeholder="your@email.com" required></div>
+        <div class="fg"><label>Username *</label><input id="su-user" type="text" placeholder="Choose a username" required></div>
+        <div class="fg"><label>Phone</label><input id="su-phone" type="tel" placeholder="+91 XXXXX XXXXX"></div>
+        <div class="fg"><label>Password *</label><input id="su-pw" type="password" placeholder="Min. 6 characters" required></div>
+        <div class="fg"><label>Confirm Password *</label><input id="su-pw2" type="password" placeholder="Repeat password" required></div>
+        <div class="fg"><label>Role *</label>
+          <select id="su-role" onchange="handleRoleChange(this.value)">
+            <option value="user">👤 Community Member (Donor / Receiver / Micro-Volunteer)</option>
+            <option value="trust">🏛️ Trust / NGO (Certified Requester)</option>
+          </select>
+        </div>
+        <div id="suerr" style="color:var(--r1);font-size:.8rem;margin-bottom:12px;min-height:18px"></div>
+        <button type="submit" class="btn btn-primary btn-full">🚀 Create Account</button>
+      </form>
+      <p style="text-align:center;margin-top:14px;font-size:.8rem;color:var(--txt3)">Already have an account? <a href="#" onclick="switchAuthTab('signin');return false" style="color:var(--g2);font-weight:600">Sign In →</a></p>
+    </div>
+    <div style="margin-top:16px;text-align:center;font-size:.75rem;color:var(--txt3)">🤖 Powered by TensorFlow.js MobileNet · P2P Community Network</div>
+</div>
+
+<div class="chat-wrap" id="chat-wrap">
+  <div class="chat-box" id="chat-box">
+    <div class="chat-head">
+      <h4>🤖 <span>Zero Hunger AI Assistant</span></h4>
+      <button class="x-btn" style="background:rgba(255,255,255,.15);color:#fff" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="chat-msg bot">👋 Hello! I'm your Zero Hunger P2P AI assistant. Ask me about donations, requests, volunteers, trust scores, or routing!</div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ask anything…" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" style="background:#f8fafc;color:var(--g1);border:1px solid var(--border);box-shadow:none" onclick="startChatVoice('chat-input', true)" title="Voice to AI">🎤</button>
+      <button class="chat-send" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+  <button class="chat-toggle" onclick="toggleChat()" id="chat-toggle-btn" title="AI Assistant">🤖</button>
+</div>
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/api_keys.js?v=2"></script>
+<script src="js/app.js?v=2"></script>
+</body>
+</html>

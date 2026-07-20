@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Hunger System — P2P AI Food Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+<div class="toast-wrap" id="toasts"></div>
+<nav class="navbar" id="main-navbar" >
+  <div class="nav-brand"><div class="nav-dot"></div>Zero Hunger P2P</div>
+  <div class="nav-right">
+    <span class="nav-user" id="nav-uname"></span>
+    <span class="notif-badge" id="notif-count" onclick="openNotifModal()">0</span>
+    <button class="btn btn-sm btn-ghost" onclick="openSettingsModal()">⚙️ Settings</button>
+    <button class="btn btn-sm btn-ghost" onclick="doLogout()">🚪 Logout</button>
+  </div>
+</nav>
+<div class="chat-wrap" id="chat-wrap" >
+  <div class="chat-box" id="chat-box">
+    <div class="chat-head">
+      <h4>🤖 <span>Zero Hunger AI Assistant</span></h4>
+      <button class="x-btn" style="background:rgba(255,255,255,.15);color:#fff" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="chat-msg bot">👋 Hello! I'm your Zero Hunger P2P AI assistant. Ask me about donations, requests, volunteers, trust scores, or routing!</div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ask anything…" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" style="background:#f8fafc;color:var(--g1);border:1px solid var(--border);box-shadow:none" onclick="startChatVoice('chat-input', true)" title="Voice to AI">🎤</button>
+      <button class="chat-send" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+  <button class="chat-toggle" onclick="toggleChat()" id="chat-toggle-btn" title="AI Assistant">🤖</button>
+</div>
+<div id="volunteer-page" class="page active">
+  <div class="dash-wrap">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button class="btn btn-outline btn-sm" onclick="goBack()">← Back</button>
+      <h2 class="sec-title" style="margin:0">🚗 Micro-Volunteer Module</h2>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="card-head"><h3>🚗 Volunteer Registration</h3></div>
+        <div class="card-body">
+          <form id="vol-form">
+            <div class="row2">
+              <div class="fg"><label>Your Name *</label><input name="vol_name" placeholder="Full name" required></div>
+              <div class="fg"><label>Age *</label><input name="vol_age" type="number" min="18" placeholder="Age" required></div>
+            </div>
+            <div class="fg"><label>Vehicle Type</label>
+              <select name="vehicle_type">
+                <option value="Own">🚗 Own Vehicle</option>
+                <option value="Rent">🚐 Rented Vehicle</option>
+                <option value="Bike">🏍️ Bike</option>
+                <option value="Walk">🚶 Walking (Micro-Volunteer)</option>
+              </select>
+            </div>
+            <div class="fg"><label>Pickup Location *</label><input name="vol_pickup" placeholder="e.g. Meenakshi Amman Kovil area, Madurai" required></div>
+            <div class="fg"><label>Shift Preference</label>
+              <select name="shift_sel" id="shift-sel" onchange="genSlots(this.value)">
+                <option value="Morning">🌅 Morning</option>
+                <option value="Afternoon">☀️ Afternoon</option>
+                <option value="Night">🌙 Night</option>
+              </select>
+            </div>
+            <div class="fg"><label>Select 3-Hour Slot</label><div class="slot-grid" id="time-slots"></div></div>
+            <button type="submit" class="btn btn-primary btn-full" style="margin-top:10px">✅ Register as Micro-Volunteer</button>
+          </form>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <div class="card-head"><h3>🤖 AI Assignment + Smart Route</h3></div>
+          <div class="card-body">
+            <div id="agent-res"><div class="empty"><div class="ico">🤖</div><p>Register to see your AI assignment</p></div></div>
+            <div id="smart-route-section" style="display:none;margin-top:14px">
+              <button class="btn btn-primary btn-full" onclick="generateSmartRoute()">🗺️ Generate Shortest Path</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>🅿️ Volunteer Parking Radar</h3><span class="badge bg-t">Visual AI</span></div>
+          <div class="card-body" style="padding:14px">
+            <div class="radar-pulse"></div>
+            <div class="parking-radar-wrap">
+              <div class="parking-radar" id="parking-radar"></div>
+            </div>
+            <div id="parking-stats" style="margin-top:10px;font-size:.78rem;color:var(--txt2)"></div>
+            <button class="btn btn-outline btn-sm btn-full" style="margin-top:10px" onclick="scanParking()">🔄 Rescan Parking Slots</button>
+            <div id="parking-msg" style="margin-top:8px;font-size:.78rem;min-height:20px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>📍 Your Live Location + Route</h3></div>
+          <div class="card-body" style="padding:10px">
+            <div id="vol-map" style="height:220px;border-radius:8px"></div>
+            <div id="vol-loc-txt" style="font-size:.78rem;color:var(--txt3);margin-top:8px;text-align:center">Getting your location…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <div class="card-head"><h3>🎁 Donor Details</h3></div>
+      <div class="card-body table-responsive" style="padding:0">
+        <table class="tbl">
+          <thead><tr><th>Donor</th><th>Food</th><th>Qty</th><th>Distance</th><th>Location</th><th>Payment</th><th>Trust</th><th>Status</th></tr></thead>
+          <tbody id="vol-donor-tbody"><tr><td colspan="9" class="empty">No donations yet.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/api_keys.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
+
+

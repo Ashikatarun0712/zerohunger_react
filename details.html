@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Hunger System — P2P AI Food Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+<div class="toast-wrap" id="toasts"></div>
+<nav class="navbar" id="main-navbar" >
+  <div class="nav-brand"><div class="nav-dot"></div>Zero Hunger P2P</div>
+  <div class="nav-right">
+    <span class="nav-user" id="nav-uname"></span>
+    <span class="notif-badge" id="notif-count" onclick="openNotifModal()">0</span>
+    <button class="btn btn-sm btn-ghost" onclick="openSettingsModal()">⚙️ Settings</button>
+    <button class="btn btn-sm btn-ghost" onclick="doLogout()">🚪 Logout</button>
+  </div>
+</nav>
+<div class="chat-wrap" id="chat-wrap" >
+  <div class="chat-box" id="chat-box">
+    <div class="chat-head">
+      <h4>🤖 <span>Zero Hunger AI Assistant</span></h4>
+      <button class="x-btn" style="background:rgba(255,255,255,.15);color:#fff" onclick="toggleChat()">✕</button>
+    </div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="chat-msg bot">👋 Hello! I'm your Zero Hunger P2P AI assistant. Ask me about donations, requests, volunteers, trust scores, or routing!</div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ask anything…" onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="chat-send" style="background:#f8fafc;color:var(--g1);border:1px solid var(--border);box-shadow:none" onclick="startChatVoice('chat-input', true)" title="Voice to AI">🎤</button>
+      <button class="chat-send" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+  <button class="chat-toggle" onclick="toggleChat()" id="chat-toggle-btn" title="AI Assistant">🤖</button>
+</div>
+<div id="details-page" class="page active">
+  <div class="dash-wrap">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button class="btn btn-outline btn-sm" onclick="showPage('admin-page')">← Back</button>
+      <div class="sec-title" style="margin:0">📋 Detailed Records</div>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-head"><h3>🎁 Donors</h3></div>
+      <div class="card-body table-responsive" style="padding:0">
+        <table class="tbl"><thead><tr><th>Name</th><th>Food</th><th>Type</th><th>Qty</th><th>Payment</th><th>Freshness</th><th>Trust Score</th></tr></thead>
+        <tbody id="det-don-tb"></tbody></table>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-head"><h3>📦 Requests</h3></div>
+      <div class="card-body table-responsive" style="padding:0">
+        <table class="tbl"><thead><tr><th>Receiver</th><th>Food</th><th>Qty</th><th>Urgency</th><th>Priority</th><th>Distance</th><th>Status</th></tr></thead>
+        <tbody id="det-req-tb"></tbody></table>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-head"><h3>🚗 Volunteers</h3></div>
+      <div class="card-body table-responsive" style="padding:0">
+        <table class="tbl"><thead><tr><th>Name</th><th>Vehicle</th><th>Shift</th><th>Slot</th><th>Trust Score</th><th>Status</th></tr></thead>
+        <tbody id="det-vol-tb"></tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>⭐ Submit Rating & Review</h3></div>
+      <div class="card-body">
+        <div class="g2">
+          <div>
+            <div class="fg"><label>Category</label><select id="rt-cat"><option value="donor">Donor</option><option value="volunteer">Volunteer</option></select></div>
+            <div class="fg"><label>Name</label><input id="rt-name" placeholder="Donor / Volunteer name"></div>
+            <div class="fg"><label>Score (1–5)</label>
+              <input type="range" id="rt-score" min="1" max="5" step="0.5" value="4" oninput="document.getElementById('rt-sval').textContent=this.value" style="accent-color:var(--g2);width:100%">
+              <div style="text-align:right;font-weight:700;color:var(--g2)"><span id="rt-sval">4</span> / 5</div>
+            </div>
+            <div class="fg">
+              <label style="display:flex;align-items:center;justify-content:space-between">
+                Review
+                <div style="display:flex;align-items:center;gap:6px">
+                  <button type="button" class="voice-btn" id="voice-btn" onclick="toggleVoice()" title="Click to record voice note">🎤</button>
+                  <span style="font-size:.75rem;color:var(--txt3)">Voice Note</span>
+                </div>
+              </label>
+              <textarea id="rt-review" placeholder="Write your review or click the microphone to record…" rows="3"></textarea>
+              <div id="voice-status" class="voice-status-bar idle" style="display:none"></div>
+            </div>
+            <button class="btn btn-primary" onclick="submitRating()">⭐ Submit Rating</button>
+            <div id="rating-success-preview" style="margin-top:12px"></div>
+          </div>
+          <div class="ai-box">
+            <div class="ai-dot">Social Trust Rating System</div>
+            <p style="font-size:.82rem;opacity:.75;margin-top:8px">Ratings compute:</p>
+            <ul style="margin-top:6px;font-size:.8rem;opacity:.65;padding-left:14px;line-height:2">
+              <li>Donor reliability trust score</li>
+              <li>Volunteer performance rank</li>
+              <li>P2P reputation index</li>
+              <li>Voice notes auto-transcribed</li>
+            </ul>
+            <div id="ratings-list" style="margin-top:14px;max-height:180px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/api_keys.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
+
+
