@@ -386,8 +386,13 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: '20px' }}>
-          <div className="card-head"><h3>📍 Live Community Map</h3><span className="loc-tag"><span className="loc-dot"></span>Live</span></div>
+        <div className="card" style={{ marginBottom: '20px', border: '2px solid #10b981', overflow: 'hidden', boxShadow: '0 8px 25px rgba(16, 185, 129, 0.15)' }}>
+          <div className="card-head" style={{ background: 'rgba(16, 185, 129, 0.05)', borderBottom: '1px solid rgba(16, 185, 129, 0.2)' }}>
+            <h3 style={{ color: '#047857' }}>📍 Live Community Map</h3>
+            <span className="loc-tag" style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #10b981' }}>
+              <span className="loc-dot" style={{ background: '#10b981' }}></span>Live
+            </span>
+          </div>
           <div className="card-body" style={{ padding: 0 }}>
             <LeafletMap 
               center={[appState.userLat || 9.9252, appState.userLng || 78.1198]} 
