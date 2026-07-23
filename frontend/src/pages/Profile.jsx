@@ -15,6 +15,7 @@ export default function Profile() {
   const [editName, setEditName] = useState(appState.name || '');
   const [editEmoji, setEditEmoji] = useState(appState.emoji || '👤');
   const [editPush, setEditPush] = useState(appState.pushEnabled !== false);
+  const [editTheme, setEditTheme] = useState(appState.theme || 'system');
   const [showNotifications, setShowNotifications] = useState(false);
 
   const handleLogout = () => {
@@ -33,7 +34,7 @@ export default function Profile() {
       }
       
       // Update local state
-      updateApp({ name: editName, emoji: editEmoji, pushEnabled: editPush });
+      updateApp({ name: editName, emoji: editEmoji, pushEnabled: editPush, theme: editTheme });
       await syncDatabase();
       setShowSettings(false);
     } catch (e) {
@@ -89,9 +90,10 @@ export default function Profile() {
 
             <div className="fg">
               <label>Profile Theme</label>
-              <select>
-                <option>🟢 Light Emerald (Default)</option>
-                <option>🌙 Dark Mode (Coming Soon)</option>
+              <select value={editTheme} onChange={(e) => setEditTheme(e.target.value)}>
+                <option value="system">💻 System Preference</option>
+                <option value="light">🟢 Light Emerald</option>
+                <option value="dark">🌙 Dark Mode</option>
               </select>
             </div>
             

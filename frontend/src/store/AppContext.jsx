@@ -42,7 +42,8 @@ const initialAPP = {
   parkingState: null,
   selectedParkSlot: null,
   mobileNetModel: null,
-  mobileNetLoading: false
+  mobileNetLoading: false,
+  theme: 'light'
 };
 
 export const AppProvider = ({ children }) => {
@@ -77,6 +78,15 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('zh_registry', JSON.stringify(registry));
   }, [registry]);
+
+  // Apply Theme
+  useEffect(() => {
+    let activeTheme = appState.theme;
+    if (activeTheme === 'system') {
+      activeTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', activeTheme);
+  }, [appState.theme]);
 
   const updateApp = (updates) => {
     setAppState((prev) => ({ ...prev, ...updates }));
