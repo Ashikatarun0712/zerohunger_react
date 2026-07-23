@@ -232,16 +232,19 @@ export default function Donor() {
     const linkedDonation = myAvail[0];
     
     if (window.confirm(`Fulfill this request using your donation: "${linkedDonation.food_name}"?`)) {
+      const req = db.requests.find(r => r.id === reqId);
+      
       // Update request to processing and link the donation
       await supabaseClient.from('requests').update({ 
         status: 'processing',
-        donation_id: linkedDonation.id
+        donation_id: linkedDonation.id,
+        assigned_to: appState.name
       }).eq('id', reqId);
       
       // Update donation status
       await supabaseClient.from('donations').update({
         status: 'processing',
-        claimed_by: 'Receiver' // Basic tracking
+        claimed_by: req?.req_name || 'Receiver'
       }).eq('id', linkedDonation.id);
       
       alert("Handshake initiated! The request is now processing.");

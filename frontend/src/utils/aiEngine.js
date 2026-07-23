@@ -149,7 +149,7 @@ export function mapMobileNetToFreshness(predictions, foodHint) {
   
   if (fN >= mN && fN >= sN) return { label: 'Fresh', cssClass: 'fresh-food', icon: '✅', confidence: Math.round(fN * 100), freshScore: Math.min(10, 6 + fN * 4), emoji: '🟢' };
   if (mN >= sN) return { label: 'Medium', cssClass: 'medium-food', icon: '⚠️', confidence: Math.round(mN * 100), freshScore: Math.min(7, 4 + mN * 3), emoji: '🟡' };
-  return { label: 'Spoiled', cssClass: 'spoiled-food', icon: '❌', confidence: Math.round(sN * 100), freshScore: Math.max(0, sN * 2), emoji: '🔴' };
+  return { label: 'Spoiled', cssClass: 'spoiled-food', icon: '❌', confidence: Math.round(sN * 100), freshScore: 0, emoji: '🔴' };
 }
 
 let openRouterKeyIndex = 0;
@@ -191,8 +191,9 @@ Respond ONLY with valid JSON (no markdown):
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '{}';
     
-    // Clean up response if it has markdown formatting
-    const jsonStr = content.replace(/```json|```/gi, '').trim();
+    // Safely extract JSON using regex in case LLM outputs conversational padding
+    const match = content.match(/\{[\s\S]*\}/);
+    const jsonStr = match ? match[0] : '{}';
     const parsed = JSON.parse(jsonStr);
 
     const labelMap = { 
@@ -254,7 +255,8 @@ export async function analyzeCertificate(base64Image) {
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '{}';
     
-    const jsonStr = content.replace(/```json|```/gi, '').trim();
+    const match = content.match(/\{[\s\S]*\}/);
+    const jsonStr = match ? match[0] : '{}';
     return JSON.parse(jsonStr);
   } catch (error) {
     console.error('Certificate Fallback error:', error);

@@ -11,6 +11,7 @@ export default function Activity() {
   const [loading, setLoading] = useState(false);
   const [chatPartner, setChatPartner] = useState(null);
   const [chatPartnerRole, setChatPartnerRole] = useState(null);
+  const [chatActivity, setChatActivity] = useState(null);
   
   // Cancel Modal State
   const [cancelAct, setCancelAct] = useState(null);
@@ -54,29 +55,38 @@ export default function Activity() {
   };
 
   const getMyActivity = () => {
-    const un = appState.name?.toLowerCase() || '';
+    const un = (appState.user || '').toLowerCase();
+    const unName = (appState.name || '').toLowerCase();
     const myDonations = db.donations
-      .filter(d => (d.donor_name || '').toLowerCase() === un)
-      .map(d => ({ 
-        ...d, 
-        type: 'Donation', 
-        partner: d.claimed_by || '—',
-        partnerRole: d.claimed_by ? 'receiver' : null,
-        action: d.status === 'available' ? 'Cancel' : '—' 
-      }));
+      .filter(d => (d.donor_username || '').toLowerCase() === un || (d.claimed_by || '').toLowerCase() === unName)
+      .map(d => {
+        const isMine = (d.donor_username || '').toLowerCase() === un;
+        return { 
+          ...d, 
+          type: 'Donation', 
+          partner: isMine ? (d.claimed_by || '—') : (d.donor_name || '—'),
+          partnerRole: isMine ? (d.claimed_by ? 'receiver' : null) : 'donor',
+          action: (isMine && d.status === 'available') ? 'Cancel' : '—' 
+        };
+      });
     
     const myRequests = db.requests
-      .filter(r => (r.requester_name || '').toLowerCase() === un)
-      .map(r => ({ 
-        ...r, 
-        type: 'Request', 
-        food_name: r.food_name, 
-        qty: r.quantity || 0, 
-        status: r.status, 
-        partner: r.assigned_to || '—', 
-        partnerRole: r.assigned_to ? (db.volunteers.some(v => v.vol_name === r.assigned_to) ? 'volunteer' : 'donor') : null,
-        action: r.status === 'pending' ? 'Cancel' : '—' 
-      }));
+      .filter(r => (r.req_username || '').toLowerCase() === un || (r.assigned_to || '').toLowerCase() === unName)
+      .map(r => {
+        const isMine = (r.req_username || '').toLowerCase() === un;
+        return { 
+          ...r, 
+          type: 'Request', 
+          food_name: r.food_name, 
+          qty: r.quantity || 0, 
+          status: r.status, 
+          partner: isMine ? (r.assigned_to || '—') : (r.req_name || '—'), 
+          partnerRole: isMine 
+            ? (r.assigned_to ? (db.volunteers.some(v => v.vol_name === r.assigned_to) ? 'volunteer' : 'donor') : null) 
+            : 'receiver',
+          action: (isMine && r.status === 'pending') ? 'Cancel' : '—' 
+        };
+      });
 
     return [...myDonations, ...myRequests].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   };
@@ -122,7 +132,9 @@ export default function Activity() {
           partner={chatPartner} 
           partnerRole={chatPartnerRole} 
           currentUser={appState.name || ''} 
-          onClose={() => setChatPartner(null)} 
+          currentUserRole={appState.role || 'user'}
+          activity={chatActivity}
+          onClose={() => { setChatPartner(null); setChatActivity(null); }} 
           db={db}
           syncDatabase={syncDatabase}
         />
@@ -182,12 +194,13 @@ export default function Activity() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          {act.partner !== '—' && (
+                          {act.partner !== '—' && act.status !== 'completed' && (
                             <button 
                               className="btn btn-sm btn-outline" 
                               onClick={() => {
                                 setChatPartner(act.partner);
                                 setChatPartnerRole(act.partnerRole);
+                                setChatActivity(act);
                               }}
                               style={{ borderColor: 'var(--g2)', color: 'var(--g2)' }}
                             >

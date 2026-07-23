@@ -74,7 +74,21 @@ export default function Request() {
     const selectedDonation = availableMatches.find(m => m.id.toString() === formData.req_food_sel);
     if (!selectedDonation && formData.req_food_sel) return alert('Invalid item selected');
     
-    const basePriority = formData.req_urgency === 'High' ? 60 : 30;
+    let finalPriority = formData.req_urgency === 'High' ? 60 : 30;
+    if (selectedDonation) {
+      const freshnessScore = selectedDonation.freshness_score || 10;
+      let proximityScore = 15;
+      if (selectedDonation.expiry_date) {
+        const daysLeft = Math.max(0, Math.floor((new Date(selectedDonation.expiry_date) - new Date()) / (1000 * 60 * 60 * 24)));
+        if (daysLeft <= 1) proximityScore = 30;
+        else if (daysLeft <= 3) proximityScore = 20;
+        else if (daysLeft <= 7) proximityScore = 10;
+        else proximityScore = 5;
+      }
+      finalPriority += proximityScore + Math.min(10, freshnessScore);
+    } else {
+      finalPriority += 20;
+    }
     
     const payload = {
       req_username: appState.user || '',
@@ -84,7 +98,7 @@ export default function Request() {
       urgency: formData.req_urgency,
       location_label: `${formData.req_area}, ${formData.req_city}`,
       status: 'pending',
-      priority_score: basePriority + 10 // + freshness/proximity dummy
+      priority_score: Math.min(100, Math.round(finalPriority))
     };
 
     if (selectedDonation && selectedDonation.id) {

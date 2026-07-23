@@ -278,3 +278,6 @@ ALTER TABLE platform_stats   DISABLE ROW LEVEL SECURITY;
 -- ============================================================
 -- DONE — Database is fully initialised.
 -- ============================================================
+A L T E R   T A B L E   d o n a t i o n s   A D D   C O L U M N   c l a i m e d _ b y   V A R C H A R ( 1 0 0 ) ;  
+ A L T E R   T A B L E   r e q u e s t s   A D D   C O L U M N   a s s i g n e d _ t o   V A R C H A R ( 1 0 0 ) ;  
+ 

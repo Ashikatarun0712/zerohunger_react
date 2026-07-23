@@ -20,6 +20,7 @@ const initialDB = {
   fund_requests: [],
   messages: [],
   platform_stats: null,
+  mass_donations: [],
   nid: { don: 1, req: 1, vol: 1, notif: 1, fund: 1, msg: 1 }
 };
 
@@ -82,7 +83,7 @@ export const AppProvider = ({ children }) => {
 
   const syncDatabase = async () => {
     try {
-      const [donRes, reqRes, volRes, ratRes, trustRes, fundRes, msgRes, statRes, notifRes] = await Promise.all([
+      const [donRes, reqRes, volRes, ratRes, trustRes, fundRes, msgRes, statRes, notifRes, massRes] = await Promise.all([
         supabaseClient.from('donations').select('*'),
         supabaseClient.from('requests').select('*'),
         supabaseClient.from('volunteers').select('*'),
@@ -91,7 +92,8 @@ export const AppProvider = ({ children }) => {
         supabaseClient.from('fund_requests').select('*'),
         supabaseClient.from('messages').select('*'),
         supabaseClient.from('platform_stats').select('*').single(),
-        supabaseClient.from('notifications').select('*')
+        supabaseClient.from('notifications').select('*'),
+        supabaseClient.from('mass_donations').select('*')
       ]);
 
       if (donRes.error) console.error('donations fetch error:', donRes.error);
@@ -115,7 +117,8 @@ export const AppProvider = ({ children }) => {
         fund_requests: fundRes.data || [],
         messages: msgRes.data || [],
         platform_stats: statRes?.data || null,
-        notifications: notifRes.data || []
+        notifications: notifRes.data || [],
+        mass_donations: massRes?.data || []
       }));
     } catch (e) {
       console.error('Sync error:', e);

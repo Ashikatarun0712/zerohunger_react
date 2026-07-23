@@ -79,6 +79,9 @@ export default function Volunteer() {
       vol_username: appState.user || '',
       vol_name: formData.vol_name || appState.name || '',
       vehicle_type: formData.vehicle_type,
+      pickup_location: formData.vol_pickup,
+      shift: formData.shift_sel,
+      time_slot: formData.time_slot,
       status: 'active'
     };
     

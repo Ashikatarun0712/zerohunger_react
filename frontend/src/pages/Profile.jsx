@@ -47,7 +47,7 @@ export default function Profile() {
   // Calculate user stats
   const un = (appState.user || '').toLowerCase();
   const myDons = db.donations.filter(d => (d.donor_name || '').toLowerCase() === un).length;
-  const myReqs = db.requests.filter(r => (r.requester_name || '').toLowerCase() === un).length;
+  const myReqs = db.requests.filter(r => (r.req_name || '').toLowerCase() === un).length;
 
   return (
     <div className="page active">
@@ -199,7 +199,7 @@ export default function Profile() {
 
         {/* 6. History Navigation Cards */}
         <div className="history-metrics-container">
-          <div className="history-metric-btn don-btn" onClick={() => navigate('/history-donations')}>
+          <div className="history-metric-btn don-btn" onClick={() => navigate('/activity')}>
             <div className="hm-glow"></div>
             <div className="hm-inner">
               <div className="hm-icon">📜</div>
@@ -210,7 +210,7 @@ export default function Profile() {
               </div>
             </div>
           </div>
-          <div className="history-metric-btn req-btn" onClick={() => navigate('/history-requests')}>
+          <div className="history-metric-btn req-btn" onClick={() => navigate('/activity')}>
             <div className="hm-glow"></div>
             <div className="hm-inner">
               <div className="hm-icon">📥</div>
@@ -260,6 +260,37 @@ export default function Profile() {
           )}
         </div>
         
+        {/* 7. Community Notice Board (Mass Events) */}
+        <div className="card" style={{ marginBottom: '20px', borderTop: '4px solid #8b5cf6' }}>
+          <div className="card-head">
+            <h3>📌 Community Notice Board</h3>
+            <span className="badge" style={{ background: '#8b5cf6' }}>Mass Events</span>
+          </div>
+          <div className="card-body">
+            {db.mass_donations && db.mass_donations.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {db.mass_donations.map((event, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '15px', padding: '15px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                    {event.event_photo_url ? (
+                      <img src={event.event_photo_url} alt="Event" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px' }} />
+                    ) : (
+                      <div style={{ width: '100px', height: '100px', background: 'var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>🎪</div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '4px', color: 'var(--p1)' }}>{event.organiser}'s Mass Donation Event</div>
+                      <div style={{ fontSize: '.9rem', marginBottom: '4px' }}><strong>📍 Location:</strong> {event.place}</div>
+                      <div style={{ fontSize: '.9rem', marginBottom: '4px' }}><strong>⏰ Time:</strong> {new Date(event.event_time).toLocaleString()}</div>
+                      <div style={{ fontSize: '.85rem', color: 'var(--txt1)' }}>Organiser Contact: {event.phone_number} {event.is_phone_verified && '✅'}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty">No upcoming mass donation events at the moment.</div>
+            )}
+          </div>
+        </div>
+
         <div className="card" style={{ marginBottom: '20px' }}>
           <div className="card-head"><h3>📍 Live Community Map</h3><span className="loc-tag"><span className="loc-dot"></span>Live</span></div>
           <div className="card-body" style={{ padding: 0 }}>
