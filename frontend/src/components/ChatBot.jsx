@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../store/AppContext';
+import { useTranslation } from '../store/LanguageContext';
 import { OPENROUTER_API_KEYS } from '../utils/api_keys';
 
 let openRouterKeyIndex = 0;
@@ -24,6 +25,7 @@ export default function ChatBot() {
 
   const navigate = useNavigate();
   const { db } = useAppContext();
+  const { lang, t } = useTranslation();
 
   const handleActionClick = (path) => {
     setIsOpen(false);
@@ -55,24 +57,24 @@ export default function ChatBot() {
   };
 
   const handleLocalFallback = (userText) => {
-    let reply = "I'm sorry, I'm currently in offline mode and couldn't understand that. You can ask me how to 'donate', 'volunteer', or 'request' food!";
+    let reply = `[${lang.toUpperCase()}] Offline: I am currently offline. You can ask me how to donate, volunteer, or request food!`;
     const lower = userText.toLowerCase();
     
     if (lower.includes('donate')) {
-      reply = "To donate: Go to the 'Donor Module' on your dashboard. Take a clear picture of the food, and our AI will automatically assess its freshness and calculate the expiry date. Once submitted, it appears on the live map!";
+      reply = `[${lang.toUpperCase()}] To donate: Go to the 'Donor Module' on your dashboard. Take a clear picture of the food, and our AI will automatically assess its freshness and calculate the expiry date.`;
     } else if (lower.includes('volunteer') || lower.includes('deliver')) {
       const volCount = db.volunteers ? db.volunteers.length : 0;
-      reply = `Micro-volunteering is easy! We currently have ${volCount} active volunteers. Go to the 'Micro-Volunteer' tab to register your vehicle. Our smart routing algorithm will assign you the best delivery route based on your location and shift preference.`;
+      reply = `[${lang.toUpperCase()}] Micro-volunteering is easy! We currently have ${volCount} active volunteers. Go to the 'Micro-Volunteer' tab to register your vehicle.`;
     } else if (lower.includes('request') || lower.includes('receiver') || lower.includes('food')) {
       const availCount = db.donations ? db.donations.filter(d => d.status === 'available').length : 0;
-      reply = `There are currently ${availCount} active food donations available right now! Visit the 'Receiver Module'. You can view all available donations on the map, filter by proximity, and request what you need.`;
+      reply = `[${lang.toUpperCase()}] There are currently ${availCount} active food donations available right now! Visit the 'Receiver Module'.`;
     } else if (lower.includes('trust') || lower.includes('ngo')) {
-      reply = "Trusts can request bulk food or monetary funding. Just upload your NGO certificate in the Trust portal, and our system will verify it instantly!";
+      reply = `[${lang.toUpperCase()}] Trusts can request bulk food or monetary funding. Just upload your NGO certificate in the Trust portal, and our system will verify it instantly!`;
     } else if (lower.includes('hello') || lower.includes('hi')) {
       const availCount = db.donations ? db.donations.filter(d => d.status === 'available').length : 0;
-      reply = `Hello there! I'm operating in offline fallback mode right now. Did you know there are ${availCount} active food donations on the platform today? Let's save some meals! What do you need?`;
+      reply = `[${lang.toUpperCase()}] Hello there! I'm operating in offline fallback mode right now. Did you know there are ${availCount} active food donations on the platform today? Let's save some meals! What do you need?`;
     } else if (lower.includes('safety') || lower.includes('guidelines')) {
-      reply = "Food safety is our priority! Cooked food must be distributed within 24 hours. Raw produce can last up to 20 days. Packaged food relies on the printed expiry. Our AI MobileNet system helps double-check this before any donation goes live.";
+      reply = `[${lang.toUpperCase()}] Food safety is our priority! Cooked food must be distributed within 24 hours. Raw produce can last up to 20 days. Packaged food relies on the printed expiry.`;
     }
 
     return { text: reply, actions: getSmartActions(userText + " " + reply) };
@@ -107,7 +109,7 @@ export default function ChatBot() {
           messages: [
             {
               role: 'system',
-              content: 'You are the ZeroHunger P2P platform AI assistant. Be helpful, concise, and friendly. Guide users on how to donate food, request food, or volunteer.'
+              content: `You are the ZeroHunger P2P platform AI assistant. Be helpful, concise, and friendly. Guide users on how to donate food, request food, or volunteer. IMPORTANT: You must reply entirely in the ISO language code: ${lang.toUpperCase()}. Do not use English unless the code is EN.`
             },
             ...history
           ]

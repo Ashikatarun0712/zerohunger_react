@@ -1,16 +1,45 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppContext } from '../store/AppContext';
+import { useAppContext, supabaseClient } from '../store/AppContext';
+import { useTranslation } from '../store/LanguageContext';
 import LeafletMap from '../components/LeafletMap';
 
 export default function Profile() {
-  const { appState, db, updateApp } = useAppContext();
+  const { appState, db, updateApp, syncDatabase } = useAppContext();
   const navigate = useNavigate();
+  const { t, lang, setLang } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Profile Update State
+  const [editName, setEditName] = useState(appState.name || '');
+  const [editEmoji, setEditEmoji] = useState(appState.emoji || '👤');
 
   const handleLogout = () => {
     updateApp({ user: null, role: null, name: null });
     navigate('/');
+  };
+
+  const handleSaveSettings = async () => {
+    setIsUpdating(true);
+    try {
+      // Update in Supabase (MVP assume user is unique by username)
+      if (appState.user) {
+         await supabaseClient.from('users')
+           .update({ name: editName, emoji: editEmoji })
+           .eq('username', appState.user);
+      }
+      
+      // Update local state
+      updateApp({ name: editName, emoji: editEmoji });
+      await syncDatabase();
+      setShowSettings(false);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to update profile');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const emoji = appState.emoji || '👤';
@@ -25,12 +54,23 @@ export default function Profile() {
       {/* Settings Modal */}
       {showSettings && (
         <div className="modal-bg">
-          <div className="modal-box">
+          <div className="modal-box" style={{ maxWidth: '400px' }}>
             <div className="modal-head">
-              <div className="modal-title">⚙️ Account Settings</div>
+              <div className="modal-title">⚙️ {t('settings')}</div>
               <button className="x-btn" onClick={() => setShowSettings(false)}>✕</button>
             </div>
             
+            <div className="fg">
+              <label>{t('language')}</label>
+              <select value={lang} onChange={(e) => setLang(e.target.value)}>
+                <option value="en">🇺🇸 English</option>
+                <option value="es">🇪🇸 Español (Spanish)</option>
+                <option value="fr">🇫🇷 Français (French)</option>
+                <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
+                <option value="ta">🇮🇳 தமிழ் (Tamil)</option>
+              </select>
+            </div>
+
             <div className="fg">
               <label>Profile Theme</label>
               <select>
@@ -38,6 +78,7 @@ export default function Profile() {
                 <option>🌙 Dark Mode (Coming Soon)</option>
               </select>
             </div>
+            
             <div className="fg">
               <label>Push Notifications</label>
               <select>
@@ -45,6 +86,7 @@ export default function Profile() {
                 <option>Disabled</option>
               </select>
             </div>
+            
             <div className="fg">
               <label>P2P Privacy</label>
               <select>
@@ -52,9 +94,23 @@ export default function Profile() {
                 <option>Show approximate location only</option>
               </select>
             </div>
+
+            <div style={{ margin: '20px 0', borderBottom: '1px solid var(--border)' }}></div>
             
-            <button className="btn btn-primary btn-full" onClick={() => setShowSettings(false)} style={{ marginTop: '10px' }}>
-              Save Preferences
+            <div className="modal-title" style={{ marginBottom: '12px', fontSize: '1rem' }}>{t('profile')} Update</div>
+
+            <div className="fg">
+              <label>Display Name</label>
+              <input type="text" value={editName} onChange={e => setEditName(e.target.value)} />
+            </div>
+            
+            <div className="fg">
+              <label>Avatar Emoji</label>
+              <input type="text" value={editEmoji} onChange={e => setEditEmoji(e.target.value)} maxLength={2} />
+            </div>
+            
+            <button className="btn btn-primary btn-full" onClick={handleSaveSettings} disabled={isUpdating} style={{ marginTop: '16px' }}>
+              {isUpdating ? 'Saving...' : 'Save Preferences'}
             </button>
           </div>
         </div>
@@ -68,8 +124,8 @@ export default function Profile() {
         <div className="nav-right">
           <div className="nav-user">{emoji} {appState.user || 'User'}</div>
           <div className="notif-badge">0</div>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowSettings(true)} style={{ padding: '6px 12px' }}>⚙️ Settings</button>
-          <button className="btn btn-ghost btn-sm" onClick={handleLogout} style={{ padding: '6px 12px', background: 'var(--r1)', borderColor: 'var(--r1)' }}>🚪 Logout</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowSettings(true)} style={{ padding: '6px 12px' }}>⚙️ {t('settings')}</button>
+          <button className="btn btn-ghost btn-sm" onClick={handleLogout} style={{ padding: '6px 12px', background: 'var(--r1)', borderColor: 'var(--r1)' }}>🚪 {t('logout')}</button>
         </div>
       </div>
 

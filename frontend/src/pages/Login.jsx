@@ -76,12 +76,32 @@ export default function Login() {
   return (
     <div className="page active" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="login-card" style={{ maxWidth: '460px', width: '100%' }}>
-        <div className="login-logo">
+        <div className="login-logo" style={{ position: 'relative' }}>
           <div className="licon">🌱</div>
           <div>
             <h1 style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '1.4rem', color: 'var(--g1)' }}>Zero Hunger P2P</h1>
             <span style={{ fontSize: '.78rem', color: 'var(--txt3)' }}>AI-Enhanced Community Food Network</span>
           </div>
+          <button 
+            title="Admin Login"
+            style={{ 
+              position: 'absolute', right: 0, top: 0, 
+              background: 'transparent', border: 'none', 
+              fontSize: '1.2rem', cursor: 'pointer', opacity: 0.6,
+              transition: 'opacity 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.opacity = '1'}
+            onMouseOut={(e) => e.currentTarget.style.opacity = '0.6'}
+            onClick={() => {
+              const pwd = window.prompt('Enter Admin Password:');
+              if (pwd) { // Accept any for MVP demo, or specifically check "admin"
+                updateApp({ user: 'admin_sys', role: 'admin', name: 'System Admin' });
+                navigate('/admin');
+              }
+            }}
+          >
+            ⚙️
+          </button>
         </div>
         
         <div style={{ display: 'flex', background: 'var(--border)', borderRadius: 'var(--radius-sm)', padding: '3px', marginBottom: '22px' }}>

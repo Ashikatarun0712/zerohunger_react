@@ -76,10 +76,9 @@ export default function Volunteer() {
     if (!supabaseClient) return alert('Supabase client not initialized');
     
     const payload = {
-      name: formData.vol_name,
+      vol_username: appState.user || '',
+      vol_name: formData.vol_name || appState.name || '',
       vehicle_type: formData.vehicle_type,
-      lat: appState.userLat || 9.9252,
-      lng: appState.userLng || 78.1198,
       status: 'active'
     };
     

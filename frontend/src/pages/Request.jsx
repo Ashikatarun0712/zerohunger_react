@@ -12,7 +12,8 @@ export default function Request() {
     req_food_sel: '',
     req_qty: '',
     req_urgency: 'Low',
-    req_loc: ''
+    req_area: '',
+    req_city: ''
   });
   
   const [availableMatches, setAvailableMatches] = useState([]);
@@ -31,7 +32,33 @@ export default function Request() {
   };
 
   const autoFillLocation = () => {
-    setFormData({ ...formData, req_loc: 'Detected Location: 9.9252, 78.1198' });
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, req_area: 'Detecting...', req_city: 'Detecting...' }));
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`);
+        const data = await response.json();
+        
+        const address = data.address || {};
+        const area = address.suburb || address.neighbourhood || address.residential || address.village || 'Unknown Area';
+        const city = address.city || address.town || address.county || address.state_district || 'Unknown City';
+        
+        setFormData(prev => ({ ...prev, req_area: area, req_city: city }));
+      } catch (err) {
+        console.error("Reverse geocoding failed", err);
+        setFormData(prev => ({ ...prev, req_area: 'Failed to detect', req_city: 'Failed to detect' }));
+        alert("Failed to detect location name. You can enter it manually.");
+      }
+    }, () => {
+      setFormData(prev => ({ ...prev, req_area: '', req_city: '' }));
+      alert("Unable to retrieve your location.");
+    });
   };
 
   const getDistBadge = (km) => {
@@ -50,13 +77,12 @@ export default function Request() {
     const basePriority = formData.req_urgency === 'High' ? 60 : 30;
     
     const payload = {
-      requester_name: formData.req_name,
+      req_username: appState.user || '',
+      req_name: formData.req_name,
       food_name: selectedDonation ? selectedDonation.food_name : 'Custom Request',
       quantity: parseInt(formData.req_qty),
       urgency: formData.req_urgency,
-      location_label: formData.req_loc,
-      lat: appState.userLat || 9.9252,
-      lng: appState.userLng || 78.1198,
+      location_label: `${formData.req_area}, ${formData.req_city}`,
       status: 'pending',
       priority_score: basePriority + 10 // + freshness/proximity dummy
     };
@@ -67,7 +93,8 @@ export default function Request() {
     
     const { error } = await supabaseClient.from('requests').insert([payload]);
     if (error) {
-      alert('Error submitting request');
+      console.error('Request insert error:', error);
+      alert('Error submitting request: ' + error.message);
     } else {
       if (selectedDonation && selectedDonation.id) {
         await supabaseClient.from('donations').update({ status: 'requested' }).eq('id', selectedDonation.id);
@@ -168,10 +195,17 @@ export default function Request() {
                 </div>
                 
                 <div className="fg">
-                  <label>Your Location *</label>
+                  <label>Area / Locality *</label>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <input name="req_loc" value={formData.req_loc} onChange={handleInputChange} placeholder="e.g. KK Nagar, Madurai" required style={{ flex: 1 }} />
-                    <button type="button" className="btn btn-outline" style={{ width: 'auto' }} onClick={autoFillLocation} title="Auto Detect Location">📍</button>
+                    <input name="req_area" value={formData.req_area} onChange={handleInputChange} placeholder="e.g. Anna Nagar" required style={{ flex: 1 }} />
+                  </div>
+                </div>
+                
+                <div className="fg">
+                  <label>City / Place Name *</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input name="req_city" value={formData.req_city} onChange={handleInputChange} placeholder="e.g. Madurai" required style={{ flex: 1 }} />
+                    <button type="button" className="btn btn-outline" style={{ width: 'auto' }} onClick={autoFillLocation} title="Auto Detect Location">📍 Auto</button>
                   </div>
                 </div>
                 

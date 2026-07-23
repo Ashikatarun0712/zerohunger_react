@@ -1,19 +1,56 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAppContext } from '../store/AppContext';
+import { useAppContext, supabaseClient } from '../store/AppContext';
+import { useTranslation } from '../store/LanguageContext';
 import P2PChatModal from '../components/P2PChatModal';
 
 export default function Activity() {
   const { db, appState, syncDatabase } = useAppContext();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [chatPartner, setChatPartner] = useState(null);
   const [chatPartnerRole, setChatPartnerRole] = useState(null);
+  
+  // Cancel Modal State
+  const [cancelAct, setCancelAct] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const handleRefresh = async () => {
     setLoading(true);
     await syncDatabase();
     setLoading(false);
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!cancelReason.trim()) return alert("Please specify a reason for cancellation.");
+    setIsCancelling(true);
+    
+    try {
+      const table = cancelAct.type === 'Donation' ? 'donations' : 'requests';
+      
+      // Update status to 'cancelled' and append the reason to notes/description if possible, 
+      // or simply update status since cancel_reason column might not exist yet.
+      const { error } = await supabaseClient
+        .from(table)
+        .update({ status: 'cancelled' })
+        .eq('id', cancelAct.id);
+        
+      if (error) throw error;
+      
+      // Attempt to save reason if column exists, else it fails silently
+      await supabaseClient.from(table).update({ cancel_reason: cancelReason }).eq('id', cancelAct.id).catch(() => {});
+      
+      await syncDatabase();
+      setCancelAct(null);
+      setCancelReason('');
+    } catch (e) {
+      console.error("Failed to cancel:", e);
+      alert("Failed to cancel item.");
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const getMyActivity = () => {
@@ -49,6 +86,37 @@ export default function Activity() {
   return (
     <div className="page active">
       
+      {/* Cancel Modal (Glassmorphism & Premium UI) */}
+      {cancelAct && (
+        <div className="modal-bg" style={{ zIndex: 4000 }}>
+          <div className="modal-box" style={{ maxWidth: '400px', animation: 'popIn 0.3s ease' }}>
+            <div className="modal-head">
+              <div className="modal-title" style={{ color: 'var(--r2)' }}>⚠️ Cancel {cancelAct.type}</div>
+              <button className="x-btn" onClick={() => setCancelAct(null)}>✕</button>
+            </div>
+            <p style={{ fontSize: '0.9rem', color: 'var(--txt1)', marginBottom: '16px' }}>
+              Are you sure you want to cancel this {cancelAct.type.toLowerCase()}? Please specify a reason so we can maintain community trust.
+            </p>
+            <div className="fg">
+              <label>Reason for Cancellation</label>
+              <select value={cancelReason} onChange={e => setCancelReason(e.target.value)} style={{ marginBottom: '10px' }}>
+                <option value="">-- Select a reason --</option>
+                <option value="Food spoiled/unusable">Food spoiled or unusable</option>
+                <option value="No longer available">No longer available</option>
+                <option value="Made a mistake">Made a mistake</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setCancelAct(null)}>Keep it</button>
+              <button className="btn" style={{ flex: 1, background: 'var(--r2)', color: '#fff' }} onClick={handleCancelConfirm} disabled={isCancelling}>
+                {isCancelling ? 'Cancelling...' : 'Confirm Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {chatPartner && (
         <P2PChatModal 
           partner={chatPartner} 
@@ -127,7 +195,13 @@ export default function Activity() {
                             </button>
                           )}
                           {act.action !== '—' && (
-                            <button className="btn btn-sm" style={{ background: '#fee2e2', color: '#dc2626' }}>
+                            <button 
+                              className="btn btn-sm" 
+                              style={{ background: '#fee2e2', color: '#dc2626', transition: 'all 0.2s' }}
+                              onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                              onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                              onClick={() => setCancelAct(act)}
+                            >
                               {act.action}
                             </button>
                           )}

@@ -64,12 +64,11 @@ export default function Trust() {
       const foodName = selectedDonation ? selectedDonation.food_name : 'Bulk Food Request';
 
       const payload = {
-        requester_name: appState.name || 'Trust Entity',
+        req_username: appState.user || 'trust_user',
+        req_name: appState.name || 'Trust Entity',
         food_name: foodName,
         quantity: parseInt(formData.treq_food_qty),
         location_label: formData.treq_loc,
-        lat: appState.userLat || 9.9252,
-        lng: appState.userLng || 78.1198,
         status: 'pending',
         urgency: 'High',
         priority_score: 90 // High priority for trusts
@@ -91,11 +90,12 @@ export default function Trust() {
     } else {
       if (!isVerified) return alert('You must verify first!');
       const payload = {
+        trust_username: appState.user || 'trust_user',
         trust_name: appState.name || 'Trust Entity',
         purpose: formData.treq_fund_purpose,
         amount: parseFloat(formData.treq_fund_amount),
         upi_id: formData.treq_fund_upi,
-        status: 'active'
+        status: 'open'
       };
       const { error } = await supabaseClient.from('fund_requests').insert([payload]);
       if (error) alert('Error submitting fund request');

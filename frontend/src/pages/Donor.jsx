@@ -119,6 +119,7 @@ export default function Donor() {
     const freshness_score = mobileNetResult ? mobileNetResult.result.freshScore : 10;
     
     const payload = {
+      donor_username: appState.user || '',
       donor_name,
       food_name,
       food_type: prediction ? prediction.type : item_category,
@@ -130,18 +131,49 @@ export default function Donor() {
       expiry_date,
       freshness_score,
       status: 'available',
-      payment_type: payment_type === 'online' && onl_amount ? 'paid' : 'free'
+      pay_type: payment_type === 'online' && onl_amount ? 'paid' : 'free'
     };
     
     const { error } = await supabaseClient.from('donations').insert([payload]);
     if (error) {
-      alert('Error submitting donation');
+      console.error('Donation insert error:', error);
+      alert('Error submitting donation: ' + error.message);
     } else {
       alert('Donation successful!');
       setFormData({ ...formData, food_name: '', quantity: '', mfg_date: '', expiry_date: '' });
       syncDatabase();
     }
   };
+
+  const handleFulfillRequest = async (reqId) => {
+    const myAvail = db.donations.filter(d => (d.donor_name || '').toLowerCase() === (appState.name || '').toLowerCase() && d.status === 'available');
+    if (myAvail.length === 0) {
+      return alert("You don't have any available donations to fulfill this request. Please create a donation first!");
+    }
+    
+    // For MVP, just auto-link the most recent available donation
+    const linkedDonation = myAvail[0];
+    
+    if (window.confirm(`Fulfill this request using your donation: "${linkedDonation.food_name}"?`)) {
+      // Update request to processing and link the donation
+      await supabaseClient.from('requests').update({ 
+        status: 'processing',
+        donation_id: linkedDonation.id
+      }).eq('id', reqId);
+      
+      // Update donation status
+      await supabaseClient.from('donations').update({
+        status: 'processing',
+        claimed_by: 'Receiver' // Basic tracking
+      }).eq('id', linkedDonation.id);
+      
+      alert("Handshake initiated! The request is now processing.");
+      syncDatabase();
+    }
+  };
+
+  const myDonationsList = db.donations.filter(d => (d.donor_name || '').toLowerCase() === (appState.name || '').toLowerCase());
+  const pendingRequestsList = db.requests.filter(r => r.status === 'pending');
 
   return (
     <div className="page active">
@@ -310,35 +342,76 @@ export default function Donor() {
           </div>
         </div>
         
-        {/* Tables */}
-        <div className="card" style={{ marginTop: '20px' }}>
-          <div className="card-head">
-            <h3>📋 All Donations</h3>
-            <button className="btn btn-sm btn-outline" onClick={syncDatabase}>🔄 Refresh</button>
+        {/* Two-Column Vertical Split Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }} className="responsive-grid">
+          
+          {/* Left Column: My Donations */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="card-head">
+              <h3>🎁 My Donations</h3>
+              <button className="btn btn-sm btn-outline" onClick={syncDatabase}>🔄</button>
+            </div>
+            <div className="card-body table-responsive" style={{ padding: 0, flex: 1 }}>
+              <table className="tbl">
+                <thead><tr><th>Food</th><th>Qty</th><th>Status</th></tr></thead>
+                <tbody>
+                  {myDonationsList.length === 0 ? (
+                    <tr><td colSpan="3" className="empty">You haven't made any donations yet.</td></tr>
+                  ) : (
+                    myDonationsList.map((d, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 600 }}>{d.food_name}</td>
+                        <td>{d.quantity}</td>
+                        <td>
+                          <span className={`badge ${d.status === 'available' ? 'bg-g' : (d.status === 'processing' ? 'bg-y' : 'bg-b')}`}>
+                            {d.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="card-body table-responsive" style={{ padding: 0 }}>
-            <table className="tbl">
-              <thead><tr><th>Donor</th><th>Food</th><th>Type</th><th>Qty</th><th>Status</th></tr></thead>
-              <tbody>
-                {db.donations.length === 0 ? (
-                  <tr><td colSpan="5" className="empty">No donations yet.</td></tr>
-                ) : (
-                  db.donations.map((d, i) => (
-                    <tr key={i}>
-                      <td>{d.donor_name}</td>
-                      <td style={{ fontWeight: 600 }}>{d.food_name}</td>
-                      <td><span className="badge bg-b">{d.food_type}</span></td>
-                      <td>{d.quantity}</td>
-                      <td><span className={`badge ${d.status === 'available' ? 'bg-g' : 'bg-r'}`}>{d.status}</span></td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+
+          {/* Right Column: Live Requests */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="card-head">
+              <h3>🚨 Live Requests</h3>
+              <span className="badge bg-r" style={{ animation: 'pulseGlow 2s infinite' }}>Live</span>
+            </div>
+            <div className="card-body table-responsive" style={{ padding: 0, flex: 1 }}>
+              <table className="tbl">
+                <thead><tr><th>Receiver</th><th>Needs</th><th>Location</th><th>Action</th></tr></thead>
+                <tbody>
+                  {pendingRequestsList.length === 0 ? (
+                    <tr><td colSpan="4" className="empty">No pending requests right now.</td></tr>
+                  ) : (
+                    pendingRequestsList.map((r, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 600 }}>{r.req_name || 'Anonymous'}</td>
+                        <td>{r.food_name} <span style={{ color: 'var(--txt1)', fontSize: '0.8rem' }}>(x{r.quantity})</span></td>
+                        <td style={{ fontSize: '0.85rem' }}>{r.location_label}</td>
+                        <td>
+                          <button 
+                            className="btn btn-sm btn-primary" 
+                            style={{ background: 'var(--g1)', whiteSpace: 'nowrap' }}
+                            onClick={() => handleFulfillRequest(r.id)}
+                          >
+                            🤝 Fulfill
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        {/* Trust Funds Table */}
+        {/* Trust Funds Table (Moved below the split columns) */}
         <div className="card" style={{ marginTop: '20px' }}>
           <div className="card-head">
             <h3>🏛️ Trust Funding Requests</h3>
