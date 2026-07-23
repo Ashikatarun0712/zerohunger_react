@@ -397,7 +397,16 @@ export default function Profile() {
             <LeafletMap 
               center={[appState.userLat || 9.9252, appState.userLng || 78.1198]} 
               markers={[
-                ...db.donations.filter(d => d.status === 'available' && d.lat && d.lng).map(d => ({ lat: d.lat, lng: d.lng, popup: `🎁 Donor: ${d.food_name}`, type: 'donor' })),
+                ...db.donations.filter(d => d.status === 'available' && d.lat && d.lng).map(d => ({
+                  lat: d.lat, 
+                  lng: d.lng, 
+                  popup: `<div style="font-family: inherit;">
+                            <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #1f2937;">${d.food_name}</div>
+                            <div style="font-size: 13px; color: #4b5563; margin-bottom: 2px;">📦 ${d.quantity || 0} units</div>
+                            <div style="font-size: 13px; color: #4b5563;">🌿 Freshness: <strong>${d.freshness_score || 10}/10</strong></div>
+                          </div>`,
+                  type: 'donor' 
+                })),
                 ...db.volunteers.filter(v => v.status === 'active' && v.pickup_lat && v.pickup_lng).map(v => ({ lat: v.pickup_lat, lng: v.pickup_lng, popup: `🚗 Volunteer: ${v.vol_name}`, type: 'volunteer' }))
               ]} 
               useColorDots={true}

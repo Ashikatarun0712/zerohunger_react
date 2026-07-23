@@ -37,17 +37,17 @@ const getDotIcon = (role) => {
   else { color1 = '#60a5fa'; color2 = '#2563eb'; } // Blue (Receiver/Default)
 
   return L.divIcon({
-    html: `<div style="transform: translate(-50%, -50%); width: 24px; height: 24px;">
-             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-               <circle cx="12" cy="12" r="10" fill="url(#grad_${role})" stroke="#ffffff" stroke-width="3" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3))"/>
+    html: `<div style="transform: translate(-50%, -50%); width: 16px; height: 16px;">
+             <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+               <circle cx="8" cy="8" r="6" fill="url(#grad_${role})" stroke="#ffffff" stroke-width="2" style="filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.3))"/>
                <defs>
-                 <linearGradient id="grad_${role}" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                 <linearGradient id="grad_${role}" x1="2" y1="2" x2="14" y2="14" gradientUnits="userSpaceOnUse">
                    <stop stop-color="${color1}"/>
                    <stop offset="1" stop-color="${color2}"/>
                  </linearGradient>
                </defs>
              </svg>
-             <div style="position:absolute; inset:0; border-radius:50%; animation: pulseGlow 2s infinite; background: ${color1}; opacity: 0.4; z-index:-1; filter:blur(4px);"></div>
+             <div style="position:absolute; inset:0; border-radius:50%; animation: pulseGlow 2s infinite; background: ${color1}; opacity: 0.4; z-index:-1; filter:blur(3px);"></div>
            </div>`,
     className: '',
     iconSize: [0, 0]
@@ -74,6 +74,10 @@ export default function LeafletMap({
 
     if (!mapInstanceRef.current) {
       mapInstanceRef.current = L.map(mapRef.current).setView(center, zoom);
+      // Fix for Leaflet grey tiles when container bounds change
+      setTimeout(() => {
+        if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
+      }, 300);
     }
     
     // Manage dynamic tile layer
@@ -92,6 +96,8 @@ export default function LeafletMap({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tileUrl]); 
+
+  const markersJson = JSON.stringify(markers);
 
   // Handle markers update
   useEffect(() => {
@@ -116,7 +122,8 @@ export default function LeafletMap({
           .bindPopup(m.popup || 'Location');
       }
     });
-  }, [markers, usePremiumMarker, useColorDots]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markersJson, usePremiumMarker, useColorDots]);
 
   // Handle route update
   useEffect(() => {
