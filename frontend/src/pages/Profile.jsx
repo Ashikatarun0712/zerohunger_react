@@ -14,6 +14,8 @@ export default function Profile() {
   // Profile Update State
   const [editName, setEditName] = useState(appState.name || '');
   const [editEmoji, setEditEmoji] = useState(appState.emoji || '👤');
+  const [editPush, setEditPush] = useState(appState.pushEnabled !== false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleLogout = () => {
     updateApp({ user: null, role: null, name: null });
@@ -31,7 +33,7 @@ export default function Profile() {
       }
       
       // Update local state
-      updateApp({ name: editName, emoji: editEmoji });
+      updateApp({ name: editName, emoji: editEmoji, pushEnabled: editPush });
       await syncDatabase();
       setShowSettings(false);
     } catch (e) {
@@ -46,8 +48,22 @@ export default function Profile() {
 
   // Calculate user stats
   const un = (appState.user || '').toLowerCase();
-  const myDons = db.donations.filter(d => (d.donor_name || '').toLowerCase() === un).length;
-  const myReqs = db.requests.filter(r => (r.req_name || '').toLowerCase() === un).length;
+  const myDons = (db.donations || []).filter(d => (d.donor_name || '').toLowerCase() === un).length;
+  const myReqs = (db.requests || []).filter(r => (r.req_name || '').toLowerCase() === un).length;
+  const myNotifications = (db.notifications || []).filter(n => (n.user_username || '').toLowerCase() === un).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const unreadCount = myNotifications.filter(n => !n.is_read).length;
+
+  const handleMarkAllRead = async () => {
+    try {
+      const unreadIds = myNotifications.filter(n => !n.is_read).map(n => n.id);
+      if (unreadIds.length > 0) {
+        await supabaseClient.from('notifications').update({ is_read: true }).in('id', unreadIds);
+        await syncDatabase();
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  };
 
   return (
     <div className="page active">
@@ -81,9 +97,9 @@ export default function Profile() {
             
             <div className="fg">
               <label>Push Notifications</label>
-              <select>
-                <option>Enabled (Real-time)</option>
-                <option>Disabled</option>
+              <select value={editPush ? 'enabled' : 'disabled'} onChange={e => setEditPush(e.target.value === 'enabled')}>
+                <option value="enabled">Enabled (Real-time)</option>
+                <option value="disabled">Disabled</option>
               </select>
             </div>
             
@@ -123,11 +139,44 @@ export default function Profile() {
         </div>
         <div className="nav-right">
           <div className="nav-user">{emoji} {appState.user || 'User'}</div>
-          <div className="notif-badge">0</div>
+          <div className="notif-badge" onClick={() => setShowNotifications(!showNotifications)} style={{ cursor: 'pointer' }}>
+            {appState.pushEnabled === false ? '🔕' : unreadCount}
+          </div>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowSettings(true)} style={{ padding: '6px 12px' }}>⚙️ {t('settings')}</button>
           <button className="btn btn-ghost btn-sm" onClick={handleLogout} style={{ padding: '6px 12px', background: 'var(--r1)', borderColor: 'var(--r1)' }}>🚪 {t('logout')}</button>
         </div>
       </div>
+
+      {showNotifications && appState.pushEnabled !== false && (
+        <div className="notif-dropdown" style={{ position: 'absolute', top: '70px', right: '20px', width: '340px', background: 'var(--card)', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 1000, overflow: 'hidden', border: '1px solid var(--border)', animation: 'popIn 0.2s ease' }}>
+          <div style={{ padding: '14px 18px', background: 'var(--bg)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--txt)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🔔 Notifications {unreadCount > 0 && <span className="badge bg-r" style={{ fontSize: '0.7rem' }}>{unreadCount} New</span>}
+            </h4>
+            {unreadCount > 0 && (
+              <button className="btn btn-ghost btn-sm" onClick={handleMarkAllRead} style={{ fontSize: '0.75rem', padding: '4px 8px', color: 'var(--p1)' }}>Mark all read</button>
+            )}
+          </div>
+          <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
+            {myNotifications.length === 0 ? (
+              <div style={{ padding: '30px 20px', textAlign: 'center', color: 'var(--txt1)', fontSize: '0.9rem' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '10px', opacity: 0.5 }}>📭</div>
+                You're all caught up!
+              </div>
+            ) : (
+              myNotifications.map(n => (
+                <div key={n.id} style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', background: n.is_read ? 'transparent' : 'rgba(59, 130, 246, 0.05)', transition: 'background 0.2s' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--txt)', fontWeight: n.is_read ? 'normal' : '600', lineHeight: '1.4' }}>{n.message}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--txt1)', marginTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                     {new Date(n.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                     {n.urgency === 'High' && <span style={{ color: '#dc2626', fontWeight: 'bold' }}>⚠️ High Priority</span>}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 2. Profile Top with tags */}
       <div className="prof-top">
@@ -239,6 +288,12 @@ export default function Profile() {
             <div className="mod-title" style={{ fontWeight: 800, marginBottom: '5px' }}>Micro-Volunteer Module</div>
             <div className="mod-desc">Register as micro-volunteer with parking radar & smart routing.</div>
           </div>
+          <div className="mod-card module-card" onClick={() => navigate('/leaderboard')} style={{ border: '2px solid var(--g4)', background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(254, 243, 199, 0.4))' }}>
+            <div className="mod-icon" style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)', color: '#d97706', boxShadow: '0 0 15px rgba(251, 191, 36, 0.4)' }}>🏆</div>
+            <div className="mod-title" style={{ fontWeight: 800, marginBottom: '5px', color: '#b45309' }}>Competition Board</div>
+            <div className="mod-desc">See the daily leaderboard, climb the ranks, and boost your community score!</div>
+          </div>
+
           <div className="mod-card module-card" onClick={() => navigate('/activity')}>
             <div className="mod-icon" style={{ background: '#e0e7ff', color: '#4f46e5' }}>📈</div>
             <div className="mod-title" style={{ fontWeight: 800, marginBottom: '5px' }}>My Live Activity</div>

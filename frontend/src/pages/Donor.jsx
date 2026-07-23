@@ -71,6 +71,43 @@ export default function Donor() {
     }
   };
 
+  const autoFillLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, location_text: 'Detecting...' }));
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`, {
+          headers: {
+            'User-Agent': 'ZeroHungerP2P/1.0',
+            'Accept-Language': 'en'
+          }
+        });
+        const data = await response.json();
+        
+        const address = data.address || {};
+        const area = address.suburb || address.neighbourhood || address.residential || address.village || '';
+        const city = address.city || address.town || address.county || address.state_district || '';
+        const combined = area ? `${area}, ${city}` : city || 'Unknown Location';
+        
+        setFormData(prev => ({ ...prev, location_text: combined }));
+      } catch (err) {
+        console.error("Reverse geocoding failed", err);
+        setFormData(prev => ({ ...prev, location_text: '' }));
+        alert("Failed to detect location automatically.");
+      }
+    }, () => {
+      setFormData(prev => ({ ...prev, location_text: '' }));
+      alert("Unable to retrieve your location. Please check browser permissions.");
+    });
+  };
+
+
   const handleImgUpload = (file) => {
     if (!file) return;
     const rd = new FileReader();
@@ -252,8 +289,9 @@ export default function Donor() {
     }
   };
 
-  const myDonationsList = db.donations.filter(d => (d.donor_name || '').toLowerCase() === (appState.name || '').toLowerCase());
-  const pendingRequestsList = db.requests.filter(r => r.status === 'pending');
+  const un = (appState.user || '').toLowerCase();
+  const myDonationsList = db.donations.filter(d => (d.donor_username || '').toLowerCase() === un);
+  const pendingRequestsList = db.requests.filter(r => r.status === 'pending' && (r.req_username || '').toLowerCase() !== un);
 
   return (
     <div className="page active">
@@ -349,7 +387,13 @@ export default function Donor() {
                 
                 <div className="row2">
                   <div className="fg"><label>Quantity (units) *</label><input type="number" name="quantity" value={formData.quantity} onChange={handleInputChange} required /></div>
-                  <div className="fg"><label>Location *</label><input name="location_text" value={formData.location_text} onChange={handleInputChange} required /></div>
+                  <div className="fg">
+                    <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      Location *
+                      <span style={{ cursor: 'pointer', color: 'var(--p1)', fontSize: '0.8rem', fontWeight: 600 }} onClick={autoFillLocation}>📍 Auto Detect</span>
+                    </label>
+                    <input name="location_text" value={formData.location_text} onChange={handleInputChange} required />
+                  </div>
                 </div>
                 
                 <div className="row2">

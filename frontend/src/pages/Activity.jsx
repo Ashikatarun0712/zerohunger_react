@@ -66,6 +66,7 @@ export default function Activity() {
           type: 'Donation', 
           partner: isMine ? (d.claimed_by || '—') : (d.donor_name || '—'),
           partnerRole: isMine ? (d.claimed_by ? 'receiver' : null) : 'donor',
+          myRole: isMine ? 'donor' : 'receiver',
           action: (isMine && d.status === 'available') ? 'Cancel' : '—' 
         };
       });
@@ -84,6 +85,7 @@ export default function Activity() {
           partnerRole: isMine 
             ? (r.assigned_to ? (db.volunteers.some(v => v.vol_name === r.assigned_to) ? 'volunteer' : 'donor') : null) 
             : 'receiver',
+          myRole: isMine ? 'receiver' : (db.volunteers.some(v => v.vol_name === appState.name) ? 'volunteer' : 'donor'),
           action: (isMine && r.status === 'pending') ? 'Cancel' : '—' 
         };
       });
@@ -132,7 +134,7 @@ export default function Activity() {
           partner={chatPartner} 
           partnerRole={chatPartnerRole} 
           currentUser={appState.name || ''} 
-          currentUserRole={appState.role || 'user'}
+          currentUserRole={chatActivity.myRole}
           activity={chatActivity}
           onClose={() => { setChatPartner(null); setChatActivity(null); }} 
           db={db}

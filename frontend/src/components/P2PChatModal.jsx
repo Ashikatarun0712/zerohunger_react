@@ -81,13 +81,13 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
 
       if (partnerHandshake) {
         // Both shook hands, complete the transaction
-        const req = db.requests.find(r => 
-          ((r.req_name || '').toLowerCase() === currentUser.toLowerCase() && (r.assigned_to || '').toLowerCase() === partner.toLowerCase()) || 
-          ((r.req_name || '').toLowerCase() === partner.toLowerCase() && (r.assigned_to || '').toLowerCase() === currentUser.toLowerCase())
+        const req = (db.requests || []).find(r => 
+          ((r.req_name || '').toLowerCase() === (currentUser || '').toLowerCase() && (r.assigned_to || '').toLowerCase() === (partner || '').toLowerCase()) || 
+          ((r.req_name || '').toLowerCase() === (partner || '').toLowerCase() && (r.assigned_to || '').toLowerCase() === (currentUser || '').toLowerCase())
         );
-        const don = db.donations.find(d => 
-          ((d.donor_name || '').toLowerCase() === currentUser.toLowerCase() && (d.claimed_by || '').toLowerCase() === partner.toLowerCase()) || 
-          ((d.donor_name || '').toLowerCase() === partner.toLowerCase() && (d.claimed_by || '').toLowerCase() === currentUser.toLowerCase())
+        const don = (db.donations || []).find(d => 
+          ((d.donor_name || '').toLowerCase() === (currentUser || '').toLowerCase() && (d.claimed_by || '').toLowerCase() === (partner || '').toLowerCase()) || 
+          ((d.donor_name || '').toLowerCase() === (partner || '').toLowerCase() && (d.claimed_by || '').toLowerCase() === (currentUser || '').toLowerCase())
         );
 
         if (req) await supabaseClient.from('requests').update({ status: 'completed' }).eq('id', req.id);
@@ -130,13 +130,13 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
     if (!cancelReason) return alert("Please select a reason for cancellation");
     setIsSending(true);
     try {
-      const req = db.requests.find(r => 
-        ((r.req_name || '').toLowerCase() === currentUser.toLowerCase() && (r.assigned_to || '').toLowerCase() === partner.toLowerCase()) || 
-        ((r.req_name || '').toLowerCase() === partner.toLowerCase() && (r.assigned_to || '').toLowerCase() === currentUser.toLowerCase())
+      const req = (db.requests || []).find(r => 
+        ((r.req_name || '').toLowerCase() === (currentUser || '').toLowerCase() && (r.assigned_to || '').toLowerCase() === (partner || '').toLowerCase()) || 
+        ((r.req_name || '').toLowerCase() === (partner || '').toLowerCase() && (r.assigned_to || '').toLowerCase() === (currentUser || '').toLowerCase())
       );
-      const don = db.donations.find(d => 
-        ((d.donor_name || '').toLowerCase() === currentUser.toLowerCase() && (d.claimed_by || '').toLowerCase() === partner.toLowerCase()) || 
-        ((d.donor_name || '').toLowerCase() === partner.toLowerCase() && (d.claimed_by || '').toLowerCase() === currentUser.toLowerCase())
+      const don = (db.donations || []).find(d => 
+        ((d.donor_name || '').toLowerCase() === (currentUser || '').toLowerCase() && (d.claimed_by || '').toLowerCase() === (partner || '').toLowerCase()) || 
+        ((d.donor_name || '').toLowerCase() === (partner || '').toLowerCase() && (d.claimed_by || '').toLowerCase() === (currentUser || '').toLowerCase())
       );
 
       if (req) await supabaseClient.from('requests').update({ status: 'pending', assigned_to: null }).eq('id', req.id);

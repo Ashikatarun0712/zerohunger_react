@@ -20,7 +20,8 @@ export default function Request() {
 
   useEffect(() => {
     // Populate dropdown and matches
-    const available = db.donations.filter(d => d.status === 'available');
+    const un = (appState.user || '').toLowerCase();
+    const available = db.donations.filter(d => d.status === 'available' && (d.donor_username || '').toLowerCase() !== un);
     
     // Sort by dummy distance for now (would use actual haversine in full implementation)
     const sorted = [...available].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -42,7 +43,12 @@ export default function Request() {
     navigator.geolocation.getCurrentPosition(async (position) => {
       try {
         const { latitude, longitude } = position.coords;
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`);
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`, {
+          headers: {
+            'User-Agent': 'ZeroHungerP2P/1.0',
+            'Accept-Language': 'en'
+          }
+        });
         const data = await response.json();
         
         const address = data.address || {};

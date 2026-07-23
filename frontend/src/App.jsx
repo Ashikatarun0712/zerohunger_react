@@ -13,6 +13,7 @@ import Volunteer from './pages/Volunteer';
 import Activity from './pages/Activity';
 import Admin from './pages/Admin';
 import Trust from './pages/Trust';
+import Leaderboard from './pages/Leaderboard';
 
 function App() {
   const { appState, syncDatabase } = useAppContext();
@@ -56,7 +57,8 @@ function App() {
           <Route path="/volunteer" element={appState.user ? <Volunteer /> : <Navigate to="/" />} />
           <Route path="/activity" element={appState.user ? <Activity /> : <Navigate to="/" />} />
           <Route path="/admin" element={appState.user ? <Admin /> : <Navigate to="/" />} />
-        <Route path="/trust" element={appState.user ? <Trust /> : <Navigate to="/" />} />
+          <Route path="/trust" element={appState.user ? <Trust /> : <Navigate to="/" />} />
+          <Route path="/leaderboard" element={appState.user ? <Leaderboard /> : <Navigate to="/" />} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
