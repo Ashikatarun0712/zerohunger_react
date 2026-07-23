@@ -3,6 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext, supabaseClient } from '../store/AppContext';
 import LeafletMap from '../components/LeafletMap';
 
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
 export default function Volunteer() {
   const { db, appState, syncDatabase } = useAppContext();
   const navigate = useNavigate();
@@ -19,6 +31,42 @@ export default function Volunteer() {
   const [parkingState, setParkingState] = useState([]);
   const [assignment, setAssignment] = useState(null);
   const [routeData, setRouteData] = useState(null);
+
+  const uLat = appState.userLat || 9.9252;
+  const uLng = appState.userLng || 78.1198;
+
+  const nearbyJobs = (db.requests || []).filter(req => {
+    if (req.status !== 'pending' || req.assigned_to) return false;
+    const don = (db.donations || []).find(d => d.id === req.donation_id);
+    if (!don) return false;
+    const dist = calculateDistance(uLat, uLng, don.lat, don.lng);
+    return dist <= 10;
+  }).map(req => {
+    const don = db.donations.find(d => d.id === req.donation_id);
+    return { ...req, donation: don, distance: calculateDistance(uLat, uLng, don.lat, don.lng) };
+  }).sort((a, b) => a.distance - b.distance);
+
+  const acceptJob = async (req) => {
+    if (!supabaseClient) return alert('Supabase client not initialized');
+    if (!appState.user) return alert('Please login first');
+    
+    const { error: reqErr } = await supabaseClient.from('requests').update({ assigned_to: appState.user }).eq('id', req.id);
+    if (reqErr) return alert('Failed to accept job');
+    
+    const payload = {
+      vol_username: appState.user,
+      vol_name: appState.name || appState.user,
+      vehicle_type: 'Walk',
+      status: 'active',
+      assigned_req_id: req.id
+    };
+    await supabaseClient.from('volunteers').insert([payload]);
+    
+    alert('Delivery Job Accepted! You can now join the chat in Activity tab.');
+    setAssignment(req.donation);
+    generateSmartRoute(req.donation);
+    syncDatabase();
+  };
 
   useEffect(() => {
     initParkingState();
@@ -158,18 +206,29 @@ export default function Volunteer() {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="card">
-              <div className="card-head"><h3>🤖 AI Assignment + Smart Route</h3></div>
+              <div className="card-head"><h3>🚀 Nearby Delivery Jobs (≤ 10km)</h3></div>
               <div className="card-body">
-                {assignment ? (
-                  <div className="route-info">
-                    <div className="ai-dot">🗺️ Route Assigned: {assignment.food_name}</div>
-                    <div style={{ fontSize: '.8rem', marginTop: '4px' }}>Pickup from: {assignment.donor_name}</div>
-                    <button type="button" className="btn btn-primary btn-full" style={{ marginTop: '8px' }} onClick={() => generateSmartRoute(assignment)}>
-                      🗺️ Generate Smart Route
-                    </button>
-                  </div>
+                {nearbyJobs.length === 0 ? (
+                  <div className="empty"><div className="ico">📭</div><p>No active jobs nearby right now.</p></div>
                 ) : (
-                  <div id="agent-res"><div className="empty"><div className="ico">🤖</div><p>Register to see your AI assignment</p></div></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {nearbyJobs.map(job => (
+                      <div key={job.id} style={{ padding: '12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--g1)' }}>{job.food_name}</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--txt1)', margin: '4px 0' }}>
+                              Donor: {job.donation?.donor_name} → Receiver: {job.req_name}
+                            </div>
+                            <div className="badge bg-t">📍 {job.distance.toFixed(1)} km away</div>
+                          </div>
+                          <button className="btn btn-sm" style={{ background: '#3b82f6', color: 'white' }} onClick={() => acceptJob(job)}>
+                            Accept Job
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>

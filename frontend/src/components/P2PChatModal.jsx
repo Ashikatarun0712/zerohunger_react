@@ -8,11 +8,18 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
   const [cancelReason, setCancelReason] = useState('');
   const messagesEndRef = useRef(null);
 
-  // Filter messages between currentUser and partner
+  let participants = [currentUser, partner];
+  if (activity && activity.type === 'Request' && activity.assigned_to) {
+    const don = (db.donations || []).find(d => d.id === activity.donation_id);
+    const donor = don ? don.donor_username || don.donor_name : null;
+    const receiver = activity.req_username || activity.req_name;
+    const volunteer = activity.assigned_to;
+    participants = [donor, receiver, volunteer].filter(Boolean);
+  }
+
+  // Filter messages between participants
   const chatMessages = (db.messages || []).filter(
-    (m) =>
-      (m.sender_username === currentUser && m.receiver_username === partner) ||
-      (m.sender_username === partner && m.receiver_username === currentUser)
+    (m) => participants.includes(m.sender_username) && participants.includes(m.receiver_username)
   ).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
   const scrollToBottom = () => {
@@ -37,7 +44,7 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
     
     const payload = {
       sender_username: currentUser,
-      receiver_username: partner,
+      receiver_username: participants.find(p => p !== currentUser) || partner,
       message_text: input.trim(),
       context_type: 'p2p_chat'
     };
@@ -192,7 +199,7 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {activity && activity.status !== 'completed' && !isComplete && (
+            {activity && activity.status !== 'completed' && !isComplete && currentUserRole !== 'volunteer' && (
               <>
                 <button 
                   className="btn btn-sm" 

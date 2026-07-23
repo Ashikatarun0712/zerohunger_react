@@ -58,7 +58,7 @@ function App() {
           <Route path="/activity" element={appState.user ? <Activity /> : <Navigate to="/" />} />
           <Route path="/admin" element={appState.user ? <Admin /> : <Navigate to="/" />} />
           <Route path="/trust" element={appState.user ? <Trust /> : <Navigate to="/" />} />
-          <Route path="/leaderboard" element={appState.user ? <Leaderboard /> : <Navigate to="/" />} />
+          <Route path="/leaderboard/:type" element={appState.user ? <Leaderboard /> : <Navigate to="/" />} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />

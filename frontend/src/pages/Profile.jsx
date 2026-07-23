@@ -45,6 +45,31 @@ export default function Profile() {
     }
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsUpdating(true);
+    try {
+      const fileName = `${appState.user}_${Date.now()}`;
+      const { data, error } = await supabaseClient.storage.from('avatars').upload(fileName, file);
+      if (error) throw error;
+      
+      const { data: publicUrlData } = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
+      const publicUrl = publicUrlData.publicUrl;
+
+      if (appState.user) {
+        await supabaseClient.from('users').update({ profile_image_url: publicUrl }).eq('username', appState.user);
+      }
+      updateApp({ profile_image_url: publicUrl });
+      alert('Profile image updated successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to upload image.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const emoji = appState.emoji || '👤';
 
   // Calculate user stats
@@ -182,9 +207,16 @@ export default function Profile() {
 
       {/* 2. Profile Top with tags */}
       <div className="prof-top">
-        <div className="prof-avatar-wrap">
-          <div className="prof-avatar-big">{emoji}</div>
-          <div className="prof-avatar-overlay">📷</div>
+        <div className="prof-avatar-wrap" style={{ position: 'relative' }}>
+          {appState.profile_image_url ? (
+            <img src={appState.profile_image_url} alt="Profile" className="prof-avatar-big" style={{ objectFit: 'cover' }} />
+          ) : (
+            <div className="prof-avatar-big">{emoji}</div>
+          )}
+          <label className="prof-avatar-overlay" style={{ cursor: 'pointer' }}>
+            {isUpdating ? '⏳' : '📷'}
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} disabled={isUpdating} />
+          </label>
         </div>
         <div className="prof-name">{appState.name || 'User'}</div>
         <div style={{ fontSize: '.85rem', opacity: .8, marginTop: '4px' }}>
@@ -290,10 +322,16 @@ export default function Profile() {
             <div className="mod-title" style={{ fontWeight: 800, marginBottom: '5px' }}>Micro-Volunteer Module</div>
             <div className="mod-desc">Register as micro-volunteer with parking radar & smart routing.</div>
           </div>
-          <div className="mod-card module-card" onClick={() => navigate('/leaderboard')} style={{ border: '2px solid var(--g4)', background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(254, 243, 199, 0.4))' }}>
-            <div className="mod-icon" style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)', color: '#d97706', boxShadow: '0 0 15px rgba(251, 191, 36, 0.4)' }}>🏆</div>
-            <div className="mod-title" style={{ fontWeight: 800, marginBottom: '5px', color: '#b45309' }}>Competition Board</div>
-            <div className="mod-desc">See the daily leaderboard, climb the ranks, and boost your community score!</div>
+          <div className="mod-card module-card" onClick={() => navigate('/leaderboard/donor')} style={{ border: '2px solid var(--g4)', background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(254, 243, 199, 0.4))' }}>
+            <div className="mod-icon" style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)', color: '#d97706', boxShadow: '0 0 15px rgba(251, 191, 36, 0.4)' }}>🎁</div>
+            <div className="mod-title" style={{ fontWeight: 800, marginBottom: '5px', color: '#b45309' }}>Top Donors Board</div>
+            <div className="mod-desc">See the daily donor leaderboard and boost your community score!</div>
+          </div>
+          
+          <div className="mod-card module-card" onClick={() => navigate('/leaderboard/volunteer')} style={{ border: '2px solid #fdba74', background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255, 237, 213, 0.4))' }}>
+            <div className="mod-icon" style={{ background: 'linear-gradient(135deg, #ffedd5, #fed7aa)', color: '#ea580c', boxShadow: '0 0 15px rgba(249, 115, 22, 0.3)' }}>🚗</div>
+            <div className="mod-title" style={{ fontWeight: 800, marginBottom: '5px', color: '#c2410c' }}>Micro-Volunteers Board</div>
+            <div className="mod-desc">Check out the top delivery heroes making a difference in your area.</div>
           </div>
 
           <div className="mod-card module-card" onClick={() => navigate('/activity')}>

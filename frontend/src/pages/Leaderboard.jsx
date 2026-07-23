@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAppContext } from '../store/AppContext';
 
 export default function Leaderboard() {
   const navigate = useNavigate();
+  const { type } = useParams();
+  const boardType = type === 'volunteer' ? 'volunteer' : 'donor';
   const { db, appState } = useAppContext();
   const [timeFilter, setTimeFilter] = useState('today'); // 'today' | 'all_time'
 
@@ -48,11 +50,50 @@ export default function Leaderboard() {
     return sorted;
   }, [db.donations, timeFilter, appState.user]);
 
-  const top3 = leaderboard.slice(0, 3);
-  const restList = leaderboard.slice(3);
+  const volunteerLeaderboard = useMemo(() => {
+    let targetRequests = db.requests || [];
+    if (timeFilter === 'today') {
+      const todayStr = new Date().toDateString();
+      targetRequests = targetRequests.filter(r => {
+        if (!r.created_at) return false;
+        return new Date(r.created_at).toDateString() === todayStr;
+      });
+    }
+    
+    // Only count completed deliveries where a volunteer was assigned
+    targetRequests = targetRequests.filter(r => r.status === 'completed' && r.assigned_to);
+
+    const vStats = {};
+    targetRequests.forEach(r => {
+      const vName = r.assigned_to;
+      const key = vName.toLowerCase();
+      const isMe = key === (appState.user || '').toLowerCase() || key === (appState.name || '').toLowerCase();
+      
+      if (!vStats[key]) {
+        vStats[key] = {
+          username: vName,
+          name: vName,
+          totalScore: 0,
+          deliveriesCount: 0,
+          isMe
+        };
+      }
+      vStats[key].deliveriesCount += 1;
+      vStats[key].totalScore += 1; // 1 completed delivery = 1 score
+    });
+
+    return Object.values(vStats).sort((a, b) => b.totalScore - a.totalScore);
+  }, [db.requests, timeFilter, appState.user, appState.name]);
+
+  const activeLeaderboard = boardType === 'donor' ? leaderboard : volunteerLeaderboard;
+  const top3 = activeLeaderboard.slice(0, 3);
+  const restList = activeLeaderboard.slice(3);
 
   // Helper to ensure podium always has exactly 3 slots for visual balance even if empty
-  const getPodiumUser = (index) => top3[index] || { name: '—', totalQuantity: 0, donationsCount: 0 };
+  const getPodiumUser = (index) => top3[index] || { name: '—', totalQuantity: 0, donationsCount: 0, totalScore: 0 };
+
+  const myTotalDonations = leaderboard.find(l => l.isMe)?.donationsCount || 0;
+  const myTotalDeliveries = volunteerLeaderboard.find(l => l.isMe)?.deliveriesCount || 0;
 
   return (
     <div className="page active lb-page">
@@ -67,14 +108,14 @@ export default function Leaderboard() {
         
         {/* Header section */}
         <div className="lb-header">
-          <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🏆</div>
-          <h1 className="lb-title">Community Leaderboard</h1>
+          <div style={{ fontSize: '3rem', marginBottom: '10px' }}>{boardType === 'donor' ? '🎁' : '🚗'}</div>
+          <h1 className="lb-title">{boardType === 'donor' ? 'Top Donors Board' : 'Micro-Volunteers Board'}</h1>
           <p className="lb-subtitle">See who is leading the fight against hunger</p>
         </div>
 
         {/* Time Filter Toggle */}
         <div className="lb-toggle-wrap">
-          <div className="lb-toggle">
+          <div className="lb-toggle" style={{ margin: '0 auto' }}>
             <button 
               className={`lb-toggle-btn ${timeFilter === 'today' ? 'active' : ''}`} 
               onClick={() => setTimeFilter('today')}
@@ -90,12 +131,30 @@ export default function Leaderboard() {
           </div>
         </div>
 
-        {leaderboard.length === 0 ? (
+        {/* My Stats Banner */}
+        <div style={{ background: 'linear-gradient(135deg, var(--card), var(--bg))', padding: '15px 25px', borderRadius: '16px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'center', gap: '40px', margin: '20px 0', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+          {boardType === 'donor' && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--txt1)', fontWeight: 600, textTransform: 'uppercase' }}>My Donations</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--g1)' }}>{myTotalDonations}</div>
+            </div>
+          )}
+          {boardType === 'volunteer' && (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--txt1)', fontWeight: 600, textTransform: 'uppercase' }}>My Deliveries</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f59e0b' }}>{myTotalDeliveries}</div>
+            </div>
+          )}
+        </div>
+
+        {activeLeaderboard.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--card)', borderRadius: '24px', boxShadow: 'var(--shadow)', border: '1px solid var(--border)' }}>
             <div style={{ fontSize: '3rem', opacity: 0.5, marginBottom: '10px' }}>😴</div>
-            <h3 style={{ color: 'var(--txt)', marginBottom: '8px' }}>No donations {timeFilter === 'today' ? 'today' : 'yet'}.</h3>
+            <h3 style={{ color: 'var(--txt)', marginBottom: '8px' }}>No {boardType === 'donor' ? 'donations' : 'deliveries'} {timeFilter === 'today' ? 'today' : 'yet'}.</h3>
             <p style={{ color: 'var(--txt2)' }}>Be the first to step up and take the #1 spot!</p>
-            <button className="btn btn-primary" onClick={() => navigate('/donor')} style={{ marginTop: '20px' }}>Donate Now</button>
+            <button className="btn btn-primary" onClick={() => navigate(boardType === 'donor' ? '/donor' : '/volunteer')} style={{ marginTop: '20px' }}>
+              {boardType === 'donor' ? 'Donate Now' : 'Volunteer Now'}
+            </button>
           </div>
         ) : (
           <>
@@ -104,7 +163,7 @@ export default function Leaderboard() {
               {/* Rank 2 (Silver) */}
               <div className="podium-item rank-2">
                 <div className="podium-name">{getPodiumUser(1).name}</div>
-                <div className="podium-stat">{getPodiumUser(1).totalQuantity} units</div>
+                <div className="podium-stat">{boardType === 'donor' ? `${getPodiumUser(1).totalQuantity} units` : `${getPodiumUser(1).totalScore} deliveries`}</div>
                 <div className="podium-avatar">{getPodiumUser(1).name !== '—' ? '🥈' : '👤'}</div>
                 <div className="podium-box">2</div>
               </div>
@@ -112,7 +171,7 @@ export default function Leaderboard() {
               {/* Rank 1 (Gold) */}
               <div className="podium-item rank-1">
                 <div className="podium-name">{getPodiumUser(0).name}</div>
-                <div className="podium-stat">{getPodiumUser(0).totalQuantity} units</div>
+                <div className="podium-stat">{boardType === 'donor' ? `${getPodiumUser(0).totalQuantity} units` : `${getPodiumUser(0).totalScore} deliveries`}</div>
                 <div className="podium-avatar">{getPodiumUser(0).name !== '—' ? '👑' : '👤'}</div>
                 <div className="podium-box">1</div>
               </div>
@@ -120,7 +179,7 @@ export default function Leaderboard() {
               {/* Rank 3 (Bronze) */}
               <div className="podium-item rank-3">
                 <div className="podium-name">{getPodiumUser(2).name}</div>
-                <div className="podium-stat">{getPodiumUser(2).totalQuantity} units</div>
+                <div className="podium-stat">{boardType === 'donor' ? `${getPodiumUser(2).totalQuantity} units` : `${getPodiumUser(2).totalScore} deliveries`}</div>
                 <div className="podium-avatar">{getPodiumUser(2).name !== '—' ? '🥉' : '👤'}</div>
                 <div className="podium-box">3</div>
               </div>
@@ -137,9 +196,9 @@ export default function Leaderboard() {
                       <div className="lb-row-name" style={{ color: user.isMe ? 'var(--g1)' : 'var(--txt)' }}>
                         {user.name} {user.isMe && <span className="badge bg-g" style={{ marginLeft: '6px' }}>YOU</span>}
                       </div>
-                      <div className="lb-row-stats">{user.donationsCount} donations</div>
+                      <div className="lb-row-stats">{boardType === 'donor' ? `${user.donationsCount} donations` : `${user.totalScore} deliveries`}</div>
                     </div>
-                    <div className="lb-row-score">{user.totalQuantity} <span style={{ fontSize: '0.6em', opacity: 0.7 }}>units</span></div>
+                    <div className="lb-row-score">{boardType === 'donor' ? user.totalQuantity : user.totalScore} <span style={{ fontSize: '0.6em', opacity: 0.7 }}>{boardType === 'donor' ? 'units' : 'del'}</span></div>
                   </div>
                 ))}
               </div>
