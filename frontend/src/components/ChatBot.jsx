@@ -60,7 +60,21 @@ export default function ChatBot() {
     let reply = `[${lang.toUpperCase()}] Offline: I am currently offline. You can ask me how to donate, volunteer, or request food!`;
     const lower = userText.toLowerCase();
     
-    if (lower.includes('donate')) {
+    // Check specific statistics queries first
+    if (lower.includes('live') && lower.includes('donation')) {
+      const availCount = db.donations ? db.donations.filter(d => d.status === 'available').length : 0;
+      reply = `[${lang.toUpperCase()}] There are currently ${availCount} live food donations available right now! Visit the 'Receiver Module' to claim them.`;
+    } else if (lower.includes('urgent') && lower.includes('request')) {
+      const urgentCount = db.requests ? db.requests.filter(r => r.urgency && (r.urgency.toLowerCase() === 'high' || r.urgency.toLowerCase().includes('urgent'))).length : 0;
+      reply = `[${lang.toUpperCase()}] There are ${urgentCount} urgent requests right now. Your immediate help would be highly appreciated! Please check the 'Donor Module'.`;
+    } else if ((lower.includes('number of') || lower.includes('total')) && lower.includes('request')) {
+      const reqCount = db.requests ? db.requests.length : 0;
+      reply = `[${lang.toUpperCase()}] We currently have ${reqCount} total food requests on the platform.`;
+    } else if (lower.includes('total completed') || lower.includes('completed donation') || lower.includes('meals saved')) {
+      const totalCompleted = db.platform_stats ? db.platform_stats.total_meals_saved : 0;
+      const totalDonations = db.platform_stats ? db.platform_stats.total_donations : 0;
+      reply = `[${lang.toUpperCase()}] We have successfully processed ${totalDonations} total donations, saving approximately ${totalCompleted} meals overall! Thank you to our amazing community.`;
+    } else if (lower.includes('donate')) {
       reply = `[${lang.toUpperCase()}] To donate: Go to the 'Donor Module' on your dashboard. Take a clear picture of the food, and our AI will automatically assess its freshness and calculate the expiry date.`;
     } else if (lower.includes('volunteer') || lower.includes('deliver')) {
       const volCount = db.volunteers ? db.volunteers.length : 0;
@@ -98,6 +112,21 @@ export default function ChatBot() {
         content: m.text
       }));
 
+      const availCount = db.donations ? db.donations.filter(d => d.status === 'available').length : 0;
+      const reqCount = db.requests ? db.requests.length : 0;
+      const urgentCount = db.requests ? db.requests.filter(r => r.urgency && (r.urgency.toLowerCase() === 'high' || r.urgency.toLowerCase().includes('urgent'))).length : 0;
+      const totalCompleted = db.platform_stats ? db.platform_stats.total_meals_saved : 0;
+      const totalDonations = db.platform_stats ? db.platform_stats.total_donations : 0;
+
+      const systemPrompt = `You are the ZeroHunger P2P platform AI assistant. Be helpful, concise, and friendly. Guide users on how to donate food, request food, or volunteer.
+Current Platform Stats:
+- Live/Available Donations: ${availCount}
+- Total Requests: ${reqCount}
+- Urgent Requests: ${urgentCount}
+- Total Lifetime Donations: ${totalDonations}
+- Total Meals Saved: ${totalCompleted}
+IMPORTANT: You must reply entirely in the ISO language code: ${lang.toUpperCase()}. Do not use English unless the code is EN.`;
+
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -109,7 +138,7 @@ export default function ChatBot() {
           messages: [
             {
               role: 'system',
-              content: `You are the ZeroHunger P2P platform AI assistant. Be helpful, concise, and friendly. Guide users on how to donate food, request food, or volunteer. IMPORTANT: You must reply entirely in the ISO language code: ${lang.toUpperCase()}. Do not use English unless the code is EN.`
+              content: systemPrompt
             },
             ...history
           ]
