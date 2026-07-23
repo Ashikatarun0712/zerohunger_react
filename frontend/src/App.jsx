@@ -18,6 +18,17 @@ function App() {
   const { appState, syncDatabase } = useAppContext();
 
   useEffect(() => {
+    // Setup global toast
+    window.showToast = (msg, type = 'ok') => {
+      const wrap = document.getElementById('toasts');
+      if (!wrap) return;
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.innerText = msg;
+      wrap.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    };
+
     // Initial sync
     syncDatabase();
     

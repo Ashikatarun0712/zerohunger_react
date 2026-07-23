@@ -31,6 +31,20 @@ export default function Donor() {
   const [mobileNetResult, setMobileNetResult] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
 
+  // Mass Event State
+  const [showMassForm, setShowMassForm] = useState(false);
+  const [massEvent, setMassEvent] = useState({
+    place: '',
+    event_time: '',
+    organiser: appState.name || '',
+    phone_number: '', // Used to store Email Address now based on request
+    is_phone_verified: false,
+    event_photo_url: ''
+  });
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const massFileInputRef = React.useRef(null);
+
   useEffect(() => {
     if (formData.food_name.length >= 2) {
       const delay = setTimeout(() => {
@@ -63,6 +77,15 @@ export default function Donor() {
     rd.onload = (ev) => {
       setImgPreview(ev.target.result);
       setMobileNetResult(null);
+    };
+    rd.readAsDataURL(file);
+  };
+
+  const handleMassEventImgUpload = (file) => {
+    if (!file) return;
+    const rd = new FileReader();
+    rd.onload = (ev) => {
+      setMassEvent({ ...massEvent, event_photo_url: ev.target.result });
     };
     rd.readAsDataURL(file);
   };
@@ -139,16 +162,70 @@ export default function Donor() {
       console.error('Donation insert error:', error);
       alert('Error submitting donation: ' + error.message);
     } else {
-      alert('Donation successful!');
+      if (window.showToast) window.showToast('Donation successful!', 'ok');
       setFormData({ ...formData, food_name: '', quantity: '', mfg_date: '', expiry_date: '' });
       syncDatabase();
+    }
+  };
+
+  const handleSendOtp = () => {
+    if (massEvent.phone_number.length < 10) return alert('Enter a valid phone number.');
+    setOtpSent(true);
+    if (window.showToast) window.showToast('OTP Sent via SMS! (Simulated)', 'info');
+  };
+
+  const handleVerifyOtp = () => {
+    if (otpInput === '1234') {
+      setMassEvent({ ...massEvent, is_phone_verified: true });
+      if (window.showToast) window.showToast('Phone Verified!', 'ok');
+    } else {
+      alert('Invalid OTP! Use 1234');
+    }
+  };
+
+  const handleMassSubmit = async (e) => {
+    e.preventDefault();
+    if (!massEvent.is_phone_verified) return alert('Please verify your phone number first!');
+    if (!massEvent.event_photo_url) return alert('Please upload a photo of the place.');
+    if (!supabaseClient) return alert('Supabase client not initialized');
+
+    const payload = {
+      place: massEvent.place,
+      event_time: massEvent.event_time,
+      organiser: massEvent.organiser,
+      phone_number: massEvent.phone_number, // Stores email now
+      is_phone_verified: massEvent.is_phone_verified,
+      event_photo_url: massEvent.event_photo_url
+    };
+    
+    const { error } = await supabaseClient.from('mass_donations').insert([payload]);
+    if (error) {
+      console.error('Mass event error:', error);
+      alert('Error submitting mass event: ' + error.message);
+    } else {
+      if (window.showToast) window.showToast('Mass Donation Event Created!', 'ok');
+      setMassEvent({ ...massEvent, place: '', event_time: '', phone_number: '', is_phone_verified: false, event_photo_url: '' });
+      setOtpSent(false);
+      setOtpInput('');
+      setShowMassForm(false);
     }
   };
 
   const handleFulfillRequest = async (reqId) => {
     const myAvail = db.donations.filter(d => (d.donor_name || '').toLowerCase() === (appState.name || '').toLowerCase() && d.status === 'available');
     if (myAvail.length === 0) {
-      return alert("You don't have any available donations to fulfill this request. Please create a donation first!");
+      const req = db.requests.find(r => r.id === reqId);
+      if (req) {
+        setFormData(prev => ({
+          ...prev,
+          food_name: req.food_name || '',
+          quantity: req.quantity || '',
+          location_text: req.location_label || ''
+        }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (window.showToast) window.showToast('Please submit this donation to fulfill the request.', 'info');
+      }
+      return;
     }
     
     // For MVP, just auto-link the most recent available donation
@@ -180,11 +257,26 @@ export default function Donor() {
       <div className="dash-wrap">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <button className="btn btn-outline btn-sm" onClick={() => navigate(-1)}>← Back</button>
-          <h2 className="sec-title" style={{ margin: 0 }}>🎁 Donor Module</h2>
+          <h2 className="sec-title" style={{ margin: 0 }}>{showMassForm ? '🎪 Mass Donation Campaign' : '🎁 Donor Module'}</h2>
+          <button 
+            type="button"
+            className="btn btn-sm" 
+            style={{ 
+              marginLeft: 'auto', 
+              background: showMassForm ? '#ef4444' : '#8b5cf6', 
+              color: '#ffffff',
+              fontWeight: 'bold',
+              border: 'none'
+            }}
+            onClick={() => setShowMassForm(!showMassForm)}
+          >
+            {showMassForm ? '✖ Close Mass Event' : '🎪 Mass Event'}
+          </button>
         </div>
         
-        <div className="g2">
-          {/* Form Card */}
+        {!showMassForm && (
+          <div className="g2">
+            {/* Form Card */}
           <div className="card">
             <div className="card-head"><h3>📝 Donation Form</h3></div>
             <div className="card-body">
@@ -340,10 +432,84 @@ export default function Donor() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        )}
+
+        {/* Mass Donation Event Section */}
+        {showMassForm && (
+          <div className="card" style={{ marginTop: '20px', borderLeft: '4px solid var(--p1)', animation: 'slideIn 0.3s ease' }}>
+            <div className="card-head" style={{ background: 'rgba(139, 92, 246, 0.08)' }}>
+              <h3>🎪 Mass Donation / Event</h3>
+              <span className="badge" style={{ background: 'var(--p1)' }}>Bulk Posting</span>
+            </div>
+            <div className="card-body">
+              <form onSubmit={handleMassSubmit}>
+                <div className="row2">
+                  <div className="fg">
+                    <label>Organiser Name *</label>
+                    <input value={massEvent.organiser} onChange={(e) => setMassEvent({ ...massEvent, organiser: e.target.value })} required />
+                  </div>
+                  <div className="fg">
+                    <label>Event Place *</label>
+                    <input value={massEvent.place} onChange={(e) => setMassEvent({ ...massEvent, place: e.target.value })} required />
+                  </div>
+                </div>
+
+                <div className="row2">
+                  <div className="fg">
+                    <label>Event Time *</label>
+                    <input type="datetime-local" value={massEvent.event_time} onChange={(e) => setMassEvent({ ...massEvent, event_time: e.target.value })} required />
+                  </div>
+                  <div className="fg">
+                    <label>Phone Number *</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input 
+                        type="tel" 
+                        value={massEvent.phone_number} 
+                        onChange={(e) => setMassEvent({ ...massEvent, phone_number: e.target.value, is_phone_verified: false })} 
+                        disabled={massEvent.is_phone_verified}
+                        required 
+                        style={{ flex: 1 }}
+                      />
+                      {!massEvent.is_phone_verified && !otpSent && (
+                        <button type="button" className="btn btn-outline" onClick={handleSendOtp}>Send OTP</button>
+                      )}
+                      {!massEvent.is_phone_verified && otpSent && (
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <input value={otpInput} onChange={(e) => setOtpInput(e.target.value)} placeholder="1234" style={{ width: '80px' }} />
+                          <button type="button" className="btn btn-primary" onClick={handleVerifyOtp}>Verify</button>
+                        </div>
+                      )}
+                      {massEvent.is_phone_verified && (
+                        <button type="button" className="btn btn-outline" style={{ borderColor: 'var(--g3)', color: 'var(--g3)', pointerEvents: 'none' }}>✅ Verified</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="fg">
+                  <label>Place Photo *</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <button type="button" className="btn btn-outline" onClick={() => massFileInputRef.current?.click()}>
+                      📸 Upload Photo
+                    </button>
+                    <input type="file" ref={massFileInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleMassEventImgUpload(e.target.files[0])} />
+                    {massEvent.event_photo_url && (
+                      <img src={massEvent.event_photo_url} alt="Event Place" style={{ height: '60px', width: 'auto', borderRadius: '4px', objectFit: 'cover' }} />
+                    )}
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-primary btn-full" style={{ background: 'var(--p1)' }}>📢 Post Mass Event</button>
+              </form>
+            </div>
+          </div>
+        )}
         
-        {/* Two-Column Vertical Split Layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }} className="responsive-grid">
+        {!showMassForm && (
+          <>
+            {/* Two-Column Vertical Split Layout */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }} className="responsive-grid">
           
           {/* Left Column: My Donations */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -449,6 +615,8 @@ export default function Donor() {
             </table>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
