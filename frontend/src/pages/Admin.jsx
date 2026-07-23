@@ -8,8 +8,6 @@ export default function Admin() {
   
   const chDonRef = useRef(null);
   const chReqRef = useRef(null);
-  const chSaveRef = useRef(null);
-  const chAccRef = useRef(null);
 
   const donCount = db.donations?.length || 0;
   const reqCount = db.requests?.length || 0;

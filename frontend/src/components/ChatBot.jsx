@@ -25,7 +25,7 @@ export default function ChatBot() {
 
   const navigate = useNavigate();
   const { db } = useAppContext();
-  const { lang, t } = useTranslation();
+  const { lang } = useTranslation();
 
   const handleActionClick = (path) => {
     setIsOpen(false);

@@ -90,6 +90,7 @@ export default function LeafletMap({
     return () => {
       // Cleanup on full unmount (if necessary) is handled by react but we clear it to be safe
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tileUrl]); 
 
   // Handle markers update

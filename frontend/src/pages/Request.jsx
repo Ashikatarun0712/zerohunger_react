@@ -26,6 +26,7 @@ export default function Request() {
     // Sort by dummy distance for now (would use actual haversine in full implementation)
     const sorted = [...available].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     setAvailableMatches(sorted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db.donations]);
 
   const handleInputChange = (e) => {

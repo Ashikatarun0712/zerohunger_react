@@ -33,7 +33,7 @@ export default function Login() {
         updateApp({ user: data.username, role: data.role, name: data.name, prevPage: 'profile', emoji: data.emoji || '👤' });
         navigate('/profile');
       }
-    } catch (err) {
+    } catch {
       setError('Connection error');
     }
   };
@@ -56,7 +56,7 @@ export default function Login() {
       }
 
       // Insert
-      const { data, error: insertError } = await supabaseClient
+      const { data: _data, error: insertError } = await supabaseClient
         .from('users')
         .insert([{ username: un, password: pw, name, email, role, emoji }])
         .select()

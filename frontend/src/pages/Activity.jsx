@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, supabaseClient } from '../store/AppContext';
-import { useTranslation } from '../store/LanguageContext';
+
 import P2PChatModal from '../components/P2PChatModal';
 
 export default function Activity() {
   const { db, appState, syncDatabase } = useAppContext();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+
   const [loading, setLoading] = useState(false);
   const [chatPartner, setChatPartner] = useState(null);
   const [chatPartnerRole, setChatPartnerRole] = useState(null);

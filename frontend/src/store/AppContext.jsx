@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -53,7 +54,7 @@ export const AppProvider = ({ children }) => {
       }
       const d = sessionStorage.getItem('zh_db');
       return d ? JSON.parse(d) : initialDB;
-    } catch (e) {
+    } catch {
       return initialDB;
     }
   });
@@ -64,7 +65,7 @@ export const AppProvider = ({ children }) => {
     try {
       const d = localStorage.getItem('zh_registry');
       return d ? JSON.parse(d) : {};
-    } catch (e) {
+    } catch {
       return {};
     }
   });

@@ -49,7 +49,7 @@ export default function Trust() {
       } else {
         alert('Verification Failed. Please ensure the document is a valid NGO/Trust certificate.');
       }
-    } catch (e) {
+    } catch {
       setIsVerifying(false);
       alert('Verification Failed due to network error.');
     }
