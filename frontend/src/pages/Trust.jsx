@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, supabaseClient } from '../store/AppContext';
 import { analyzeCertificate } from '../utils/aiEngine';
@@ -8,6 +8,7 @@ export default function Trust() {
   const fileInputRef = React.useRef(null);
 
   const [isVerified, setIsVerified] = useState(false);
+  const [trustDoc, setTrustDoc] = useState(null);
   const [reqType, setReqType] = useState('food');
   const [formData, setFormData] = useState({
     treq_food_sel: '',
@@ -20,6 +21,16 @@ export default function Trust() {
   
   const [certImg, setCertImg] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  useEffect(() => {
+    const currentTrust = db.trusts?.find(t => (t.trust_username === appState.user || t.trust_name === appState.name));
+    if (currentTrust) {
+      setTrustDoc(currentTrust);
+      if (currentTrust.verification_status === 'verified') {
+        setIsVerified(true);
+      }
+    }
+  }, [db.trusts, appState.user, appState.name]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -45,9 +56,27 @@ export default function Trust() {
       
       if (result && result.is_valid) {
         setIsVerified(true);
+        if (!trustDoc || trustDoc.verification_status !== 'verified') {
+          await supabaseClient.from('trusts').insert([{
+            trust_username: appState.user || 'trust_user',
+            trust_name: result.trust_name || appState.name || 'Verified Trust',
+            reg_number: result.registration_id || 'AI-VERIFIED',
+            verification_status: 'verified'
+          }]);
+          syncDatabase();
+        }
         alert(`Certificate Verified! Trust Name: ${result.trust_name || 'Verified'}, Reg ID: ${result.registration_id || 'N/A'}`);
       } else {
-        alert('Verification Failed. Please ensure the document is a valid NGO/Trust certificate.');
+        if (!trustDoc) {
+          await supabaseClient.from('trusts').insert([{
+            trust_username: appState.user || 'trust_user',
+            trust_name: appState.name || 'Pending Trust',
+            reg_number: 'PENDING-MANUAL',
+            verification_status: 'pending'
+          }]);
+          syncDatabase();
+        }
+        alert('Verification Failed or Inconclusive. Your document has been submitted for Manual Admin Verification. Please wait for an Admin to review.');
       }
     } catch {
       setIsVerifying(false);
@@ -138,6 +167,8 @@ export default function Trust() {
           <div>
             {isVerified ? (
               <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '8px 16px', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid rgba(16, 185, 129, 0.3)' }}>✅ Verified Entity</span>
+            ) : trustDoc?.verification_status === 'pending' ? (
+              <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '8px 16px', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid rgba(56, 189, 248, 0.3)' }}>⏳ Pending Admin Verification</span>
             ) : (
               <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', padding: '8px 16px', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid rgba(245, 158, 11, 0.3)' }}>⚠️ Unverified Entity</span>
             )}
@@ -165,10 +196,15 @@ export default function Trust() {
             {certImg && (
               <>
                 <img src={certImg} style={{ width: '100%', maxHeight: '300px', objectFit: 'contain', borderRadius: '12px', marginTop: '20px', background: 'rgba(0,0,0,0.3)', padding: '10px' }} alt="Certificate" />
-                {!isVerified && (
+                {!isVerified && trustDoc?.verification_status !== 'pending' && (
                   <button className="premium-btn" style={{ marginTop: '20px', background: 'linear-gradient(135deg, #10b981, #059669)' }} onClick={runCertVerification} disabled={isVerifying}>
                     {isVerifying ? 'Scanning...' : '✨ Initialize AI Verification'}
                   </button>
+                )}
+                {!isVerified && trustDoc?.verification_status === 'pending' && (
+                  <div style={{ marginTop: '20px', padding: '12px', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                    Your application is currently under manual review by an Admin.
+                  </div>
                 )}
               </>
             )}

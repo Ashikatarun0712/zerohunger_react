@@ -30,6 +30,8 @@ export default function Donor() {
   const [imgPreview, setImgPreview] = useState(null);
   const [mobileNetResult, setMobileNetResult] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [mapMarker, setMapMarker] = useState(null);
+  const [localityOptions, setLocalityOptions] = useState([]);
 
   // Mass Event State
   const [showMassForm, setShowMassForm] = useState(false);
@@ -95,6 +97,7 @@ export default function Donor() {
         const city = address.city || address.town || address.county || address.state_district || '';
         const combined = area ? `${area}, ${city}` : city || 'Unknown Location';
         
+        setLocalityOptions([]); // Clear options if auto-filling default
         setFormData(prev => ({ ...prev, location_text: combined }));
       } catch (err) {
         console.error("Reverse geocoding failed", err);
@@ -105,6 +108,39 @@ export default function Donor() {
       setFormData(prev => ({ ...prev, location_text: '' }));
       alert("Unable to retrieve your location. Please check browser permissions.");
     });
+  };
+
+  const handleMapClick = async (latlng) => {
+    setMapMarker(latlng);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=18&addressdetails=1`, {
+        headers: { 'User-Agent': 'ZeroHungerP2P/1.0', 'Accept-Language': 'en' }
+      });
+      const data = await response.json();
+      const address = data.address || {};
+      
+      const options = [];
+      if (address.neighbourhood) options.push(address.neighbourhood);
+      if (address.suburb) options.push(address.suburb);
+      if (address.village) options.push(address.village);
+      if (address.road) options.push(address.road);
+      if (address.residential) options.push(address.residential);
+      if (address.city_district) options.push(address.city_district);
+      
+      const city = address.city || address.town || address.state_district || '';
+      const uniqueOptions = [...new Set(options)].filter(Boolean);
+      
+      if (uniqueOptions.length > 0) {
+        const combinedOptions = uniqueOptions.map(opt => city ? `${opt}, ${city}` : opt);
+        setLocalityOptions(combinedOptions);
+        setFormData(prev => ({ ...prev, location_text: combinedOptions[0] }));
+      } else {
+        setLocalityOptions([]);
+        setFormData(prev => ({ ...prev, location_text: city || 'Unknown Location' }));
+      }
+    } catch (err) {
+      console.error("Reverse geocoding failed", err);
+    }
   };
 
 
@@ -392,7 +428,20 @@ export default function Donor() {
                       Location *
                       <span style={{ cursor: 'pointer', color: 'var(--p1)', fontSize: '0.8rem', fontWeight: 600 }} onClick={autoFillLocation}>📍 Auto Detect</span>
                     </label>
-                    <input name="location_text" value={formData.location_text} onChange={handleInputChange} required />
+                    {localityOptions.length > 0 ? (
+                      <select 
+                        name="location_text" 
+                        value={formData.location_text} 
+                        onChange={handleInputChange} 
+                        required
+                        style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', background: '#fff', outline: 'none' }}
+                      >
+                        {localityOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+                      </select>
+                    ) : (
+                      <input name="location_text" value={formData.location_text} onChange={handleInputChange} required />
+                    )}
+                    <div style={{ fontSize: '0.75rem', color: 'var(--txt2)', marginTop: '4px' }}>ℹ️ Tap on the map below to auto-fill accurate areas.</div>
                   </div>
                 </div>
                 
@@ -471,10 +520,14 @@ export default function Donor() {
               <div className="card-body" style={{ padding: '10px' }}>
                 <LeafletMap 
                   center={[appState.userLat || 9.9252, appState.userLng || 78.1198]} 
-                  markers={[{lat: appState.userLat || 9.9252, lng: appState.userLng || 78.1198, popup: 'Your Location'}]} 
+                  markers={[
+                    {lat: appState.userLat || 9.9252, lng: appState.userLng || 78.1198, popup: 'Your Location'},
+                    ...(mapMarker ? [{lat: mapMarker.lat, lng: mapMarker.lng, popup: 'Selected Location', type: 'volunteer'}] : [])
+                  ]} 
                   height="180px" 
                   tileUrl="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
                   usePremiumMarker={true}
+                  onMapClick={handleMapClick}
                 />
               </div>
             </div>

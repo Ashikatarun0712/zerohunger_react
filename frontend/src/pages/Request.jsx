@@ -3,6 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext, supabaseClient } from '../store/AppContext';
 import LeafletMap from '../components/LeafletMap';
 
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
 export default function Request() {
   const { db, appState, syncDatabase } = useAppContext();
   const navigate = useNavigate();
@@ -13,24 +25,64 @@ export default function Request() {
     req_qty: '',
     req_urgency: 'Low',
     req_area: '',
-    req_city: ''
+    req_city: '',
+    needs_volunteer: false
   });
   
   const [availableMatches, setAvailableMatches] = useState([]);
+  const [mapMarker, setMapMarker] = useState(null);
+  const [localityOptions, setLocalityOptions] = useState([]);
 
   useEffect(() => {
     // Populate dropdown and matches
     const un = (appState.user || '').toLowerCase();
+    const uLat = appState.userLat || 9.9252;
+    const uLng = appState.userLng || 78.1198;
+    
     const available = db.donations.filter(d => d.status === 'available' && (d.donor_username || '').toLowerCase() !== un);
     
-    // Sort by dummy distance for now (would use actual haversine in full implementation)
-    const sorted = [...available].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    // Sort by actual haversine distance
+    const sorted = [...available].map(d => {
+      return { ...d, distance: calculateDistance(uLat, uLng, d.lat, d.lng) };
+    }).sort((a, b) => a.distance - b.distance);
+    
     setAvailableMatches(sorted);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db.donations]);
+  }, [db.donations, appState.userLat, appState.userLng]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleMapClick = async (latlng) => {
+    setMapMarker(latlng);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&zoom=18&addressdetails=1`, {
+        headers: { 'User-Agent': 'ZeroHungerP2P/1.0', 'Accept-Language': 'en' }
+      });
+      const data = await response.json();
+      const address = data.address || {};
+      
+      const options = [];
+      if (address.neighbourhood) options.push(address.neighbourhood);
+      if (address.suburb) options.push(address.suburb);
+      if (address.village) options.push(address.village);
+      if (address.road) options.push(address.road);
+      if (address.residential) options.push(address.residential);
+      if (address.city_district) options.push(address.city_district);
+      
+      const uniqueOptions = [...new Set(options)].filter(Boolean);
+      
+      if (uniqueOptions.length > 0) {
+        setLocalityOptions(uniqueOptions);
+        setFormData(prev => ({ ...prev, req_area: uniqueOptions[0], req_city: address.city || address.town || address.state_district || '' }));
+      } else {
+        setLocalityOptions([]);
+        setFormData(prev => ({ ...prev, req_area: 'Unknown Area', req_city: address.city || address.town || address.state_district || '' }));
+      }
+    } catch (err) {
+      console.error("Reverse geocoding failed", err);
+    }
   };
 
   const autoFillLocation = () => {
@@ -105,6 +157,7 @@ export default function Request() {
       urgency: formData.req_urgency,
       location_label: `${formData.req_area}, ${formData.req_city}`,
       status: 'pending',
+      needs_volunteer: formData.needs_volunteer,
       priority_score: Math.min(100, Math.round(finalPriority))
     };
 
@@ -165,7 +218,7 @@ export default function Request() {
                     <div style={{ fontWeight: 700, fontSize: '.9rem', marginBottom: '4px' }}>{d.food_name}</div>
                     <div style={{ fontSize: '.76rem', color: 'var(--txt2)', marginBottom: '6px' }}>by {d.donor_name}</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-                      {getDistBadge(Math.random() * 6)}
+                      {getDistBadge(d.distance !== undefined ? d.distance : 0)}
                       <span className="badge bg-g">{d.freshness_score}/10</span>
                       <span className="badge bg-b">{d.quantity} units</span>
                     </div>
@@ -218,8 +271,21 @@ export default function Request() {
                 <div className="fg">
                   <label>Area / Locality *</label>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <input name="req_area" value={formData.req_area} onChange={handleInputChange} placeholder="e.g. Anna Nagar" required style={{ flex: 1 }} />
+                    {localityOptions.length > 0 ? (
+                      <select 
+                        name="req_area" 
+                        value={formData.req_area} 
+                        onChange={handleInputChange} 
+                        required 
+                        style={{ flex: 1, padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: '.9rem', background: '#fff' }}
+                      >
+                        {localityOptions.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+                      </select>
+                    ) : (
+                      <input name="req_area" value={formData.req_area} onChange={handleInputChange} placeholder="e.g. Anna Nagar" required style={{ flex: 1 }} />
+                    )}
                   </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--txt2)', marginTop: '4px' }}>ℹ️ Tap on the map below to auto-fill accurate areas.</div>
                 </div>
                 
                 <div className="fg">
@@ -228,6 +294,16 @@ export default function Request() {
                     <input name="req_city" value={formData.req_city} onChange={handleInputChange} placeholder="e.g. Madurai" required style={{ flex: 1 }} />
                     <button type="button" className="btn btn-outline" style={{ width: 'auto' }} onClick={autoFillLocation} title="Auto Detect Location">📍 Auto</button>
                   </div>
+                </div>
+
+                <div className="fg" style={{ marginTop: '16px', marginBottom: '20px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(59, 130, 246, 0.05)', padding: '14px', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '8px' }}>
+                    <input type="checkbox" checked={formData.needs_volunteer} onChange={(e) => setFormData({...formData, needs_volunteer: e.target.checked})} style={{ width: '18px', height: '18px', accentColor: 'var(--p1)' }} />
+                    <div>
+                      <div style={{ fontWeight: 700, color: 'var(--b1)' }}>Request Micro-Volunteer</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--txt1)', fontWeight: 400 }}>A volunteer will pick up and deliver the item for you.</div>
+                    </div>
+                  </label>
                 </div>
                 
                 <button type="submit" className="btn btn-primary btn-full">📤 Submit Request</button>
@@ -276,10 +352,14 @@ export default function Request() {
               <div className="card-body" style={{ padding: '10px' }}>
                 <LeafletMap 
                   center={[appState.userLat || 9.9252, appState.userLng || 78.1198]} 
-                  markers={[{lat: appState.userLat || 9.9252, lng: appState.userLng || 78.1198, popup: 'Your Location'}]} 
+                  markers={[
+                    {lat: appState.userLat || 9.9252, lng: appState.userLng || 78.1198, popup: 'Your Location'},
+                    ...(mapMarker ? [{lat: mapMarker.lat, lng: mapMarker.lng, popup: 'Selected Location', type: 'donor'}] : [])
+                  ]} 
                   height="200px" 
                   tileUrl="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
                   usePremiumMarker={true}
+                  onMapClick={handleMapClick}
                 />
               </div>
             </div>

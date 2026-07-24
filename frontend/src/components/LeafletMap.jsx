@@ -62,12 +62,18 @@ export default function LeafletMap({
   route = null,
   tileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', // Default
   usePremiumMarker = false, // Toggle premium markers
-  useColorDots = false // Use role-based dots instead of pins
+  useColorDots = false, // Use role-based dots instead of pins
+  onMapClick = null
 }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const routeLayerRef = useRef(null);
   const tileLayerRef = useRef(null);
+  const onMapClickRef = useRef(onMapClick);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -78,6 +84,10 @@ export default function LeafletMap({
       setTimeout(() => {
         if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
       }, 300);
+
+      mapInstanceRef.current.on('click', (e) => {
+        if (onMapClickRef.current) onMapClickRef.current(e.latlng);
+      });
     }
     
     // Manage dynamic tile layer

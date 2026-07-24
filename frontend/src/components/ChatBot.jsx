@@ -74,29 +74,39 @@ export default function ChatBot() {
       const totalCompleted = db.platform_stats ? db.platform_stats.total_meals_saved : 0;
       const totalDonations = db.platform_stats ? db.platform_stats.total_donations : 0;
       reply = `[${lang.toUpperCase()}] We have successfully processed ${totalDonations} total donations, saving approximately ${totalCompleted} meals overall! Thank you to our amazing community.`;
+    } else if (lower.includes('mass') || lower.includes('campaign') || lower.includes('event')) {
+      reply = `[${lang.toUpperCase()}] You can host a mass donation campaign for big events! Go to the Donor module and click 'Mass Event' at the top to organize bulk donations.`;
+    } else if (lower.includes('leaderboard') || lower.includes('rank') || lower.includes('score') || lower.includes('points')) {
+      reply = `[${lang.toUpperCase()}] The leaderboard tracks your platform score! You get points for donations, fulfilling requests, and volunteering. Go to the Leaderboard tab to see your rank.`;
+    } else if (lower.includes('profile') || lower.includes('account')) {
+      reply = `[${lang.toUpperCase()}] You can view and edit your profile information, gamification stats, and personal history securely in the 'Profile' section.`;
+    } else if (lower.includes('thank')) {
+      reply = `[${lang.toUpperCase()}] You're very welcome! Let's keep working together to eliminate hunger in our community.`;
+    } else if (lower.includes('how to volunteer') || lower.includes('become a volunteer')) {
+      reply = `[${lang.toUpperCase()}] To volunteer, go to the Volunteer module, select your shift and vehicle (you can even walk as a micro-volunteer!), and accept nearby delivery jobs.`;
     } else if (lower.includes('donate')) {
       reply = `[${lang.toUpperCase()}] To donate: Go to the 'Donor Module' on your dashboard. Take a clear picture of the food, and our AI will automatically assess its freshness and calculate the expiry date.`;
     } else if (lower.includes('volunteer') || lower.includes('deliver')) {
       const volCount = db.volunteers ? db.volunteers.length : 0;
-      reply = `[${lang.toUpperCase()}] Micro-volunteering is easy! We currently have ${volCount} active volunteers. Go to the 'Micro-Volunteer' tab to register your vehicle.`;
+      reply = `[${lang.toUpperCase()}] Micro-volunteering is easy! We currently have ${volCount} active volunteers. Go to the 'Micro-Volunteer' tab to register your vehicle and find jobs.`;
     } else if (lower.includes('request') || lower.includes('receiver') || lower.includes('food')) {
       const availCount = db.donations ? db.donations.filter(d => d.status === 'available').length : 0;
-      reply = `[${lang.toUpperCase()}] There are currently ${availCount} active food donations available right now! Visit the 'Receiver Module'.`;
-    } else if (lower.includes('trust') || lower.includes('ngo')) {
-      reply = `[${lang.toUpperCase()}] Trusts can request bulk food or monetary funding. Just upload your NGO certificate in the Trust portal, and our system will verify it instantly!`;
-    } else if (lower.includes('hello') || lower.includes('hi')) {
+      reply = `[${lang.toUpperCase()}] There are currently ${availCount} active food donations available right now! Visit the 'Receiver Module' to browse and claim food.`;
+    } else if (lower.includes('trust') || lower.includes('ngo') || lower.includes('money') || lower.includes('fund')) {
+      reply = `[${lang.toUpperCase()}] Trusts can request bulk food or monetary funding. Just upload your NGO certificate in the Trust portal, and our system will verify it instantly! Once verified, you can publish fund requests.`;
+    } else if (lower.includes('safety') || lower.includes('guidelines') || lower.includes('fresh')) {
+      reply = `[${lang.toUpperCase()}] Food safety is our priority! Cooked food must be distributed within 24 hours. Raw produce can last up to 20 days. Packaged food relies on the printed expiry. Our AI helps calculate this automatically!`;
+    } else if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
       const availCount = db.donations ? db.donations.filter(d => d.status === 'available').length : 0;
       reply = `[${lang.toUpperCase()}] Hello there! I'm operating in offline fallback mode right now. Did you know there are ${availCount} active food donations on the platform today? Let's save some meals! What do you need?`;
-    } else if (lower.includes('safety') || lower.includes('guidelines')) {
-      reply = `[${lang.toUpperCase()}] Food safety is our priority! Cooked food must be distributed within 24 hours. Raw produce can last up to 20 days. Packaged food relies on the printed expiry.`;
     }
 
     return { text: reply, actions: getSmartActions(userText + " " + reply) };
   };
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-    const userText = input.trim();
+  const sendMessageText = async (textToSubmit) => {
+    if (!textToSubmit.trim()) return;
+    const userText = textToSubmit.trim();
     
     const newMsgs = [...msgs, { role: 'user', text: userText }];
     setMsgs(newMsgs);
@@ -163,6 +173,8 @@ IMPORTANT: You must reply entirely in the ISO language code: ${lang.toUpperCase(
     }
   };
 
+  const sendMessage = () => sendMessageText(input);
+
   return (
     <div className="chat-wrap">
       <div className={`chat-box ${isOpen ? 'open' : ''}`}>
@@ -199,6 +211,21 @@ IMPORTANT: You must reply entirely in the ISO language code: ${lang.toUpperCase(
           {isTyping && <div className="chat-msg bot">...</div>}
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Quick Replies Strip */}
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '10px', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid var(--border)', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+          {["How to donate?", "View live requests", "How to volunteer?", "Leaderboard points", "Trust & NGO features", "Safety guidelines"].map((qr, idx) => (
+            <button 
+              key={idx} 
+              className="btn btn-sm" 
+              style={{ flexShrink: 0, borderRadius: '20px', background: 'rgba(255,255,255,0.1)', color: 'var(--txt)', border: '1px solid var(--border)', fontSize: '0.75rem', padding: '6px 12px' }}
+              onClick={() => sendMessageText(qr)}
+            >
+              {qr}
+            </button>
+          ))}
+        </div>
+
         <div className="chat-input-row">
           <input 
             type="text" 
