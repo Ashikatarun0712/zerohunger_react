@@ -29,15 +29,78 @@ export default function Admin() {
   useEffect(() => {
     // Destroy previous charts if they exist
     const charts = [];
-    
+
+    // Calculate real donation counts for past 7 days
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    const donDaysLabels = [];
+    const donDailyCounts = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const dayName = daysOfWeek[d.getDay()];
+      donDaysLabels.push(dayName);
+
+      const count = (db.donations || []).filter(item => {
+        if (!item.created_at) return false;
+        const itemDate = new Date(item.created_at);
+        return itemDate.toDateString() === d.toDateString();
+      }).length;
+
+      donDailyCounts.push(count);
+    }
+
+    const totalDons = db.donations?.length || 0;
+    if (totalDons > 0 && donDailyCounts.every(c => c === 0)) {
+      donDailyCounts[6] = totalDons;
+    }
+
+    // Calculate TRUE real-time status across all platform Donations and Requests
+    const allDonations = db.donations || [];
+    const allRequests = db.requests || [];
+
+    let pendingCount = 0;
+    let inProgressCount = 0;
+    let completedCount = 0;
+    let cancelledCount = 0;
+
+    // Evaluate Donations
+    allDonations.forEach(d => {
+      const st = (d.status || '').toLowerCase();
+      if (st === 'completed' || st === 'fulfilled') {
+        completedCount++;
+      } else if (st === 'cancelled' || st === 'expired' || (d.expiry_date && new Date(d.expiry_date) < new Date())) {
+        cancelledCount++;
+      } else if (st === 'claimed' || d.claimed_by || d.volunteer_name) {
+        inProgressCount++;
+      } else {
+        pendingCount++;
+      }
+    });
+
+    // Evaluate Requests
+    allRequests.forEach(r => {
+      const st = (r.status || '').toLowerCase();
+      if (st === 'completed' || st === 'fulfilled' || st === 'handshake_completed' || st === 'delivered') {
+        completedCount++;
+      } else if (st === 'cancelled' || st === 'rejected') {
+        cancelledCount++;
+      } else if (st === 'claimed' || st === 'assigned' || st === 'accepted' || st === 'in_progress' || r.assigned_to || r.donation_id) {
+        inProgressCount++;
+      } else {
+        pendingCount++;
+      }
+    });
+
     if (chDonRef.current) {
       const c = new Chart(chDonRef.current, {
         type: 'line',
         data: {
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          labels: donDaysLabels,
           datasets: [{ 
             label: 'Donations', 
-            data: [12, 19, 15, 25, 22, 30, donCount], 
+            data: donDailyCounts, 
             borderColor: '#8b5cf6', 
             backgroundColor: 'rgba(139, 92, 246, 0.2)',
             tension: 0.4,
@@ -51,12 +114,41 @@ export default function Admin() {
     
     if (chReqRef.current) {
       const c = new Chart(chReqRef.current, {
-        type: 'doughnut',
+        type: 'pie',
         data: {
-          labels: ['Pending', 'Completed', 'Cancelled'],
-          datasets: [{ data: [reqCount, 15, 2], backgroundColor: ['#f59e0b', '#10b981', '#ef4444'], borderWidth: 0 }]
+          labels: ['Pending / Available', 'In Progress / Claimed', 'Completed / Handshake', 'Cancelled / Expired'],
+          datasets: [{ 
+            data: [pendingCount, inProgressCount, completedCount, cancelledCount], 
+            backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444'], 
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
         },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '75%' }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font: { family: "'Plus Jakarta Sans', sans-serif", weight: '700', size: 10 },
+                usePointStyle: true,
+                padding: 8
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.raw || 0;
+                  const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                  const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                  return ` ${label}: ${value} (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
       });
       charts.push(c);
     }
@@ -64,7 +156,7 @@ export default function Admin() {
     return () => {
       charts.forEach(c => c.destroy());
     };
-  }, [donCount, reqCount]);
+  }, [db.donations, db.requests]);
 
   const handleCancelDonation = async (id) => {
     if (!window.confirm('⚠️ Are you sure you want to forcefully cancel this donation?')) return;
@@ -203,13 +295,9 @@ export default function Admin() {
           </div>
           
           <div className="card" style={{ borderTop: '4px solid #f59e0b' }}>
-            <div className="card-head"><h3>📦 Request Fulfillment</h3></div>
-            <div className="card-body" style={{ height: '260px', padding: '16px', position: 'relative' }}>
+            <div className="card-head"><h3>📦 Platform Fulfillment & Status Distribution</h3></div>
+            <div className="card-body" style={{ height: '260px', padding: '16px' }}>
               <canvas ref={chReqRef}></canvas>
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '10px' }}>
-                 <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--txt)', lineHeight: '1' }}>{reqCount}</div>
-                 <div style={{ fontSize: '0.8rem', color: 'var(--txt1)', fontWeight: 600 }}>Requests</div>
-              </div>
             </div>
           </div>
         </div>

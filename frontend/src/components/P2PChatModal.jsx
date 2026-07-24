@@ -88,26 +88,46 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
 
       if (partnerHandshake) {
         // Both shook hands, complete the transaction
-        const req = (db.requests || []).find(r => 
-          ((r.req_name || '').toLowerCase() === (currentUser || '').toLowerCase() && (r.assigned_to || '').toLowerCase() === (partner || '').toLowerCase()) || 
-          ((r.req_name || '').toLowerCase() === (partner || '').toLowerCase() && (r.assigned_to || '').toLowerCase() === (currentUser || '').toLowerCase())
-        );
-        const don = (db.donations || []).find(d => 
-          ((d.donor_name || '').toLowerCase() === (currentUser || '').toLowerCase() && (d.claimed_by || '').toLowerCase() === (partner || '').toLowerCase()) || 
-          ((d.donor_name || '').toLowerCase() === (partner || '').toLowerCase() && (d.claimed_by || '').toLowerCase() === (currentUser || '').toLowerCase())
-        );
+        const uCurrent = (currentUser || '').toLowerCase();
+        const uPartner = (partner || '').toLowerCase();
 
-        if (req) await supabaseClient.from('requests').update({ status: 'completed' }).eq('id', req.id);
-        
-        if (don) {
-          if (req && don.quantity > req.quantity) {
-             const newQty = don.quantity - req.quantity;
-             await supabaseClient.from('donations').update({ status: 'available', quantity: newQty, claimed_by: null }).eq('id', don.id);
+        let reqToUpdate = null;
+        if (activity && (activity.type === 'Request' || activity.req_username || activity.food_name)) {
+          reqToUpdate = activity;
+        } else {
+          reqToUpdate = (db.requests || []).find(r => {
+            const rUser = (r.req_username || r.req_name || '').toLowerCase();
+            const rAssign = (r.assigned_to || r.claimed_by || '').toLowerCase();
+            return (rUser === uCurrent && rAssign === uPartner) || (rUser === uPartner && rAssign === uCurrent);
+          });
+        }
+
+        let donToUpdate = null;
+        if (activity && (activity.type === 'Donation' || activity.donor_username)) {
+          donToUpdate = activity;
+        } else {
+          donToUpdate = (db.donations || []).find(d => {
+            const dUser = (d.donor_username || d.donor_name || '').toLowerCase();
+            const dClaim = (d.claimed_by || d.assigned_to || '').toLowerCase();
+            return (dUser === uCurrent && dClaim === uPartner) || (dUser === uPartner && dClaim === uCurrent);
+          });
+        }
+
+        if (reqToUpdate && reqToUpdate.donation_id && !donToUpdate) {
+          donToUpdate = (db.donations || []).find(d => d.id === reqToUpdate.donation_id);
+        }
+
+        if (reqToUpdate && reqToUpdate.id) {
+          await supabaseClient.from('requests').update({ status: 'completed' }).eq('id', reqToUpdate.id);
+        }
+
+        if (donToUpdate && donToUpdate.id) {
+          if (reqToUpdate && donToUpdate.quantity > (reqToUpdate.quantity || 0) && (reqToUpdate.quantity || 0) > 0) {
+             const newQty = donToUpdate.quantity - reqToUpdate.quantity;
+             await supabaseClient.from('donations').update({ status: 'available', quantity: newQty, claimed_by: null }).eq('id', donToUpdate.id);
           } else {
-             await supabaseClient.from('donations').update({ status: 'completed' }).eq('id', don.id);
+             await supabaseClient.from('donations').update({ status: 'completed' }).eq('id', donToUpdate.id);
           }
-        } else if (activity?.type === 'Donation') {
-           await supabaseClient.from('donations').update({ status: 'completed' }).eq('id', activity.id);
         }
 
         // Delete all chat messages between these two users (chat cannot be reinitiated)
