@@ -163,62 +163,73 @@ Classify as EXACTLY one of: Fresh, Medium, or Spoiled.
 Respond ONLY with valid JSON (no markdown):
 {"label":"Fresh|Medium|Spoiled","confidence":<70-99>,"freshness_score":<1.0-10.0>,"reason":"<one sentence>"}`;
 
-  try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'stepfun/step-1v-8k',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: base64Image } }
-            ]
-          }
-        ]
-      })
-    });
+  const visionModels = [
+    'google/gemini-2.0-flash-lite-preview-02-05:free',
+    'meta-llama/llama-3.2-11b-vision-instruct:free',
+    'stepfun/step-1v-8k'
+  ];
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+  for (const model of visionModels) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                { type: 'image_url', image_url: { url: base64Image } }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error with ${model}: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '{}';
+      
+      // Safely extract JSON using regex in case LLM outputs conversational padding
+      const match = content.match(/\{[\s\S]*\}/);
+      const jsonStr = match ? match[0] : '{}';
+      const parsed = JSON.parse(jsonStr);
+
+      const labelMap = { 
+        'Fresh': { cssClass: 'fresh-food', icon: '✅', emoji: '🟢' }, 
+        'Medium': { cssClass: 'medium-food', icon: '⚠️', emoji: '🟡' }, 
+        'Spoiled': { cssClass: 'spoiled-food', icon: '❌', emoji: '🔴' } 
+      };
+
+      const lm = labelMap[parsed.label] || labelMap['Medium'];
+      
+      return {
+        result: {
+          label: parsed.label || 'Medium',
+          cssClass: lm.cssClass,
+          icon: lm.icon,
+          emoji: lm.emoji,
+          confidence: parsed.confidence || 85,
+          freshScore: parsed.freshness_score || 7
+        },
+        predictions: [{ className: parsed.reason || `AI analyzed via ${model}`, probability: (parsed.confidence || 85) / 100 }]
+      };
+    } catch (error) {
+      console.warn(`OpenRouter Fallback error with model ${model}:`, error);
+      // Continue to next model in the fallback array
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '{}';
-    
-    // Safely extract JSON using regex in case LLM outputs conversational padding
-    const match = content.match(/\{[\s\S]*\}/);
-    const jsonStr = match ? match[0] : '{}';
-    const parsed = JSON.parse(jsonStr);
-
-    const labelMap = { 
-      'Fresh': { cssClass: 'fresh-food', icon: '✅', emoji: '🟢' }, 
-      'Medium': { cssClass: 'medium-food', icon: '⚠️', emoji: '🟡' }, 
-      'Spoiled': { cssClass: 'spoiled-food', icon: '❌', emoji: '🔴' } 
-    };
-
-    const lm = labelMap[parsed.label] || labelMap['Medium'];
-    
-    return {
-      result: {
-        label: parsed.label || 'Medium',
-        cssClass: lm.cssClass,
-        icon: lm.icon,
-        emoji: lm.emoji,
-        confidence: parsed.confidence || 85,
-        freshScore: parsed.freshness_score || 7
-      },
-      predictions: [{ className: parsed.reason || 'AI analyzed via OpenRouter', probability: (parsed.confidence || 85) / 100 }]
-    };
-  } catch (error) {
-    console.error('OpenRouter Fallback error:', error);
-    return null;
   }
+  
+  console.error('All vision models failed in runOpenRouterFallback.');
+  return null;
 }
 
 export async function analyzeCertificate(base64Image) {
@@ -227,39 +238,50 @@ export async function analyzeCertificate(base64Image) {
 
   const prompt = `Extract and verify if this is a valid NGO/Trust certificate. Return JSON format strictly like: {"is_valid": true, "trust_name": "Name", "registration_id": "123"}`;
 
-  try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'stepfun/step-1v-8k',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: base64Image } }
-            ]
-          }
-        ]
-      })
-    });
+  const visionModels = [
+    'google/gemini-2.0-flash-lite-preview-02-05:free',
+    'meta-llama/llama-3.2-11b-vision-instruct:free',
+    'stepfun/step-1v-8k'
+  ];
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+  for (const model of visionModels) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: prompt },
+                { type: 'image_url', image_url: { url: base64Image } }
+              ]
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error with ${model}: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '{}';
+      
+      const match = content.match(/\{[\s\S]*\}/);
+      const jsonStr = match ? match[0] : '{}';
+      return JSON.parse(jsonStr);
+    } catch (error) {
+      console.warn(`Certificate Fallback error with model ${model}:`, error);
+      // Continue to next model in the fallback array
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '{}';
-    
-    const match = content.match(/\{[\s\S]*\}/);
-    const jsonStr = match ? match[0] : '{}';
-    return JSON.parse(jsonStr);
-  } catch (error) {
-    console.error('Certificate Fallback error:', error);
-    return null;
   }
+  
+  console.error('All vision models failed in analyzeCertificate.');
+  return null;
 }

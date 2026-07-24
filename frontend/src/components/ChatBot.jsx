@@ -57,48 +57,52 @@ export default function ChatBot() {
   };
 
   const handleLocalFallback = (userText) => {
-    let reply = `[${lang.toUpperCase()}] Offline: I am currently offline. You can ask me how to donate, volunteer, or request food!`;
+    let reply = `[${lang.toUpperCase()}] Oh no, it looks like my AI cloud brain is currently taking a little nap! 💤 But don't worry, I'm still here in offline mode to help you out! You can ask me how to donate, volunteer, or request food. How can I brighten your day? ✨`;
     const lower = userText.toLowerCase();
     
     // Check specific statistics queries first
     if (lower.includes('live') && lower.includes('donation')) {
       const availCount = db.donations ? db.donations.filter(d => d.status === 'available').length : 0;
-      reply = `[${lang.toUpperCase()}] There are currently ${availCount} live food donations available right now! Visit the 'Receiver Module' to claim them.`;
+      reply = `[${lang.toUpperCase()}] Awesome! 🎉 Right now, we have **${availCount}** live, delicious food donations waiting to be claimed. 🍲 Head over to the 'Receiver Module' to see what's on the menu today!`;
     } else if (lower.includes('urgent') && lower.includes('request')) {
       const urgentCount = db.requests ? db.requests.filter(r => r.urgency && (r.urgency.toLowerCase() === 'high' || r.urgency.toLowerCase().includes('urgent'))).length : 0;
-      reply = `[${lang.toUpperCase()}] There are ${urgentCount} urgent requests right now. Your immediate help would be highly appreciated! Please check the 'Donor Module'.`;
+      reply = `[${lang.toUpperCase()}] 🚨 This is super important! We currently have **${urgentCount}** urgent requests for food. People in our community really need our help right now. If you have anything to share, please check the 'Donor Module' immediately. Thank you for your big heart! 💖`;
     } else if ((lower.includes('number of') || lower.includes('total')) && lower.includes('request')) {
       const reqCount = db.requests ? db.requests.length : 0;
-      reply = `[${lang.toUpperCase()}] We currently have ${reqCount} total food requests on the platform.`;
+      reply = `[${lang.toUpperCase()}] We currently have **${reqCount}** food requests on the platform. Every single meal makes a difference, so let's try to fulfill as many as we can together! 🤝`;
     } else if (lower.includes('total completed') || lower.includes('completed donation') || lower.includes('meals saved')) {
       const totalCompleted = db.platform_stats ? db.platform_stats.total_meals_saved : 0;
       const totalDonations = db.platform_stats ? db.platform_stats.total_donations : 0;
-      reply = `[${lang.toUpperCase()}] We have successfully processed ${totalDonations} total donations, saving approximately ${totalCompleted} meals overall! Thank you to our amazing community.`;
+      reply = `[${lang.toUpperCase()}] 🌟 Wow! Our amazing community has successfully processed **${totalDonations}** donations, which means we've saved and shared approximately **${totalCompleted}** meals! 🥳 Isn't that incredible? Thank you for being a part of this beautiful journey!`;
     } else if (lower.includes('mass') || lower.includes('campaign') || lower.includes('event')) {
-      reply = `[${lang.toUpperCase()}] You can host a mass donation campaign for big events! Go to the Donor module and click 'Mass Event' at the top to organize bulk donations.`;
+      reply = `[${lang.toUpperCase()}] Planning a big event or a feast? 🎊 That's amazing! You can easily host a mass donation campaign. Just hop into the 'Donor Module' and click on the 'Mass Event' button at the top to organize bulk donations. Let's feed the crowds! 🚚`;
     } else if (lower.includes('leaderboard') || lower.includes('rank') || lower.includes('score') || lower.includes('points')) {
-      reply = `[${lang.toUpperCase()}] The leaderboard tracks your platform score! You get points for donations, fulfilling requests, and volunteering. Go to the Leaderboard tab to see your rank.`;
+      reply = `[${lang.toUpperCase()}] 🏆 Ready for some friendly competition? The Leaderboard tracks your hero score! You earn points every time you donate, fulfill requests, or hit the road to volunteer. Go check the 'Leaderboard' tab and see how high you can climb! 🚀`;
     } else if (lower.includes('profile') || lower.includes('account')) {
-      reply = `[${lang.toUpperCase()}] You can view and edit your profile information, gamification stats, and personal history securely in the 'Profile' section.`;
+      reply = `[${lang.toUpperCase()}] 👤 Your profile is your hero headquarters! You can view and edit your details, check out your awesome gamification stats, and see your personal history securely in the 'Profile' section.`;
     } else if (lower.includes('thank')) {
-      reply = `[${lang.toUpperCase()}] You're very welcome! Let's keep working together to eliminate hunger in our community.`;
+      reply = `[${lang.toUpperCase()}] You are so very welcome! 🥰 It's an absolute pleasure helping you. Let's keep working hand-in-hand to eliminate hunger in our beautiful community. You rock! 🙌`;
     } else if (lower.includes('how to volunteer') || lower.includes('become a volunteer')) {
-      reply = `[${lang.toUpperCase()}] To volunteer, go to the Volunteer module, select your shift and vehicle (you can even walk as a micro-volunteer!), and accept nearby delivery jobs.`;
+      reply = `[${lang.toUpperCase()}] 🦸‍♀️🦸‍♂️ We would LOVE to have you as a volunteer! It's super easy. Just head to the 'Volunteer Module', select your shift and vehicle type (you can even sign up to walk as a micro-volunteer!), and start accepting nearby delivery jobs. Every delivery is a smile delivered! 🚲`;
     } else if (lower.includes('donate')) {
-      reply = `[${lang.toUpperCase()}] To donate: Go to the 'Donor Module' on your dashboard. Take a clear picture of the food, and our AI will automatically assess its freshness and calculate the expiry date.`;
+      reply = `[${lang.toUpperCase()}] 🎁 Donating is the most wonderful thing you can do today! Just go to the 'Donor Module' on your dashboard. Snap a quick, clear picture of the food, and our super-smart AI will automatically check its freshness and calculate the expiry date for you. It's like magic! ✨`;
     } else if (lower.includes('volunteer') || lower.includes('deliver')) {
       const volCount = db.volunteers ? db.volunteers.length : 0;
-      reply = `[${lang.toUpperCase()}] Micro-volunteering is easy! We currently have ${volCount} active volunteers. Go to the 'Micro-Volunteer' tab to register your vehicle and find jobs.`;
+      reply = `[${lang.toUpperCase()}] 🚗 Micro-volunteering is the heartbeat of our platform! We are so proud to have **${volCount}** active volunteers right now. Jump into the 'Micro-Volunteer' tab to register your wheels (or your walking shoes!) and find jobs nearby.`;
     } else if (lower.includes('request') || lower.includes('receiver') || lower.includes('food')) {
       const availCount = db.donations ? db.donations.filter(d => d.status === 'available').length : 0;
-      reply = `[${lang.toUpperCase()}] There are currently ${availCount} active food donations available right now! Visit the 'Receiver Module' to browse and claim food.`;
+      reply = `[${lang.toUpperCase()}] 🍽️ Hungry? We've got you covered! There are currently **${availCount}** active, delicious food donations ready to go. Visit the 'Receiver Module' right now to browse the map and claim what you need. Don't go hungry! 🥗`;
     } else if (lower.includes('trust') || lower.includes('ngo') || lower.includes('money') || lower.includes('fund')) {
-      reply = `[${lang.toUpperCase()}] Trusts can request bulk food or monetary funding. Just upload your NGO certificate in the Trust portal, and our system will verify it instantly! Once verified, you can publish fund requests.`;
+      reply = `[${lang.toUpperCase()}] 🏛️ Are you part of an NGO or Trust? Welcome! You can request bulk food or even monetary funding here. Just upload your official NGO certificate in the 'Trust Portal'. Our AI will verify it instantly, and you'll be ready to publish fund requests in no time! 💰`;
     } else if (lower.includes('safety') || lower.includes('guidelines') || lower.includes('fresh')) {
-      reply = `[${lang.toUpperCase()}] Food safety is our priority! Cooked food must be distributed within 24 hours. Raw produce can last up to 20 days. Packaged food relies on the printed expiry. Our AI helps calculate this automatically!`;
-    } else if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
+      reply = `[${lang.toUpperCase()}] 🛡️ Food safety is our #1 priority! Here is the golden rule: Cooked food must be distributed within 24 hours. Raw produce is tougher and can last up to 20 days! For packaged food, always check the printed expiry. And don't worry, our AI is always here to double-check freshness for you! 🥦`;
+    } else if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey') || lower.includes('morning') || lower.includes('evening')) {
       const availCount = db.donations ? db.donations.filter(d => d.status === 'available').length : 0;
-      reply = `[${lang.toUpperCase()}] Hello there! I'm operating in offline fallback mode right now. Did you know there are ${availCount} active food donations on the platform today? Let's save some meals! What do you need?`;
+      reply = `[${lang.toUpperCase()}] 👋 Hello there, superstar! I'm operating in offline fallback mode today, but I'm still full of energy and ready to help! Did you know there are **${availCount}** active food donations on the platform right now? Let's save some meals and spread some joy today! How can I assist you? ☀️`;
+    } else if (lower.includes('sad') || lower.includes('hungry') || lower.includes('help')) {
+      reply = `[${lang.toUpperCase()}] 🥺 Oh no, please don't be sad! We are here for you. Our community is full of people who care. Head straight to the 'Receiver Module' to see the food available nearby, or put out an urgent request. We will make sure you are taken care of! ❤️`;
+    } else if (lower.includes('joke') || lower.includes('funny')) {
+      reply = `[${lang.toUpperCase()}] 😂 Why did the tomato turn red? Because it saw the salad dressing! 🥗 I hope that brought a smile to your face! Now, how about we go share some food?`;
     }
 
     return { text: reply, actions: getSmartActions(userText + " " + reply) };
