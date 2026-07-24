@@ -31,19 +31,42 @@ export default function Volunteer() {
   const [parkingState, setParkingState] = useState([]);
   const [assignment, setAssignment] = useState(null);
   const [routeData, setRouteData] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const uLat = appState.userLat || 9.9252;
   const uLng = appState.userLng || 78.1198;
 
   const nearbyJobs = (db.requests || []).filter(req => {
-    if (req.status !== 'pending' || req.assigned_to || !(req.urgency && req.urgency.includes('_VOL'))) return false;
-    const don = (db.donations || []).find(d => d.id === req.donation_id);
-    if (!don) return false;
-    const dist = calculateDistance(uLat, uLng, don.lat, don.lng);
-    return dist <= 10;
+    // Only show jobs that need a volunteer
+    if (!(req.urgency && req.urgency.includes('_VOL'))) return false;
+    
+    // Exclude completed or expired jobs
+    if (req.status === 'completed' || req.status === 'expired' || req.status === 'cancelled') return false;
+    
+    // If a volunteer has already claimed this specific request, hide it
+    const hasVolunteer = (db.volunteers || []).some(v => v.assigned_req_id === req.id);
+    if (hasVolunteer) return false;
+    
+    // If it's already processing (donor linked), check distance
+    if (req.status === 'processing' && req.donation_id) {
+      const don = (db.donations || []).find(d => d.id === req.donation_id);
+      if (don && don.lat && don.lng) {
+        const dist = calculateDistance(uLat, uLng, don.lat, don.lng);
+        return dist <= 20; // Increased radius to 20km to ensure visibility
+      }
+    }
+    
+    return true; // If it's pending (no donor yet), show it so volunteer can claim intent early
   }).map(req => {
-    const don = db.donations.find(d => d.id === req.donation_id);
-    return { ...req, donation: don, distance: calculateDistance(uLat, uLng, don.lat, don.lng) };
+    let don = null;
+    let dist = 0;
+    if (req.donation_id) {
+      don = (db.donations || []).find(d => d.id === req.donation_id);
+      if (don && don.lat && don.lng) {
+        dist = calculateDistance(uLat, uLng, don.lat, don.lng);
+      }
+    }
+    return { ...req, donation: don, distance: dist };
   }).sort((a, b) => a.distance - b.distance);
 
   const acceptJob = async (req) => {
@@ -58,19 +81,57 @@ export default function Volunteer() {
       vol_name: appState.name || appState.user,
       vehicle_type: 'Walk',
       status: 'active',
-      assigned_req_id: req.id
+      assigned_req_id: req.id,
+      pickup_lat: req.donation?.lat,
+      pickup_lng: req.donation?.lng
     };
     await supabaseClient.from('volunteers').insert([payload]);
     
-    alert('Delivery Job Accepted! You can now join the chat in Activity tab.');
     setAssignment(req.donation);
     generateSmartRoute(req.donation);
     syncDatabase();
+    setShowSuccessModal(true);
   };
 
   useEffect(() => {
     initParkingState();
   }, []);
+
+  const autoFillLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, vol_pickup: 'Detecting...' }));
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`, {
+          headers: {
+            'User-Agent': 'ZeroHungerP2P/1.0',
+            'Accept-Language': 'en'
+          }
+        });
+        const data = await response.json();
+        
+        const address = data.address || {};
+        const area = address.suburb || address.neighbourhood || address.residential || address.village || '';
+        const city = address.city || address.town || address.county || address.state_district || '';
+        const combined = area ? `${area}, ${city}` : city || 'Unknown Location';
+        
+        setFormData(prev => ({ ...prev, vol_pickup: combined }));
+      } catch (err) {
+        console.error("Reverse geocoding failed", err);
+        setFormData(prev => ({ ...prev, vol_pickup: '' }));
+        alert("Failed to detect location automatically.");
+      }
+    }, () => {
+      setFormData(prev => ({ ...prev, vol_pickup: '' }));
+      alert("Unable to retrieve your location. Please check browser permissions.");
+    });
+  };
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -151,6 +212,34 @@ export default function Volunteer() {
 
   return (
     <div className="page active">
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="modal-bg" style={{ zIndex: 5000 }}>
+          <div className="modal-box" style={{ textAlign: 'center', maxWidth: '400px', animation: 'popIn 0.3s ease' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '10px' }}>✅</div>
+            <h2 style={{ margin: '0 0 10px 0', color: 'var(--g1)' }}>Job Accepted!</h2>
+            <p style={{ color: 'var(--txt1)', marginBottom: '25px', lineHeight: '1.5' }}>
+              You have successfully claimed this delivery job. The donor and receiver are waiting for you!
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => { setShowSuccessModal(false); navigate('/activity'); }} 
+                style={{ background: '#3b82f6', fontSize: '1rem', padding: '12px' }}
+              >
+                💬 Go to Activity to Chat
+              </button>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => setShowSuccessModal(false)}
+              >
+                Stay on this page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="dash-wrap">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <button className="btn btn-outline btn-sm" onClick={() => navigate(-1)}>← Back</button>
@@ -177,7 +266,13 @@ export default function Volunteer() {
                   </select>
                 </div>
                 
-                <div className="fg"><label>Pickup Location *</label><input name="vol_pickup" value={formData.vol_pickup} onChange={handleInputChange} required /></div>
+                <div className="fg">
+                  <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    Pickup Location *
+                    <span style={{ cursor: 'pointer', color: '#3b82f6', fontSize: '0.8rem', fontWeight: 600 }} onClick={autoFillLocation}>📍 Auto Detect</span>
+                  </label>
+                  <input name="vol_pickup" value={formData.vol_pickup} onChange={handleInputChange} required />
+                </div>
                 
                 <div className="fg">
                   <label>Shift Preference</label>
@@ -192,7 +287,22 @@ export default function Volunteer() {
                   <label>Select 3-Hour Slot</label>
                   <div className="slot-grid">
                     {getSlots(formData.shift_sel).map((slot, i) => (
-                      <div key={i} className={`time-slot ${formData.time_slot === slot ? 'selected' : ''}`} onClick={() => setFormData({ ...formData, time_slot: slot })}>
+                      <div 
+                        key={i} 
+                        className={`time-slot ${formData.time_slot === slot ? 'selected' : ''}`} 
+                        onClick={() => setFormData({ ...formData, time_slot: slot })}
+                        style={{
+                          padding: '12px',
+                          border: formData.time_slot === slot ? '2px solid var(--p1)' : '1px solid var(--border)',
+                          background: formData.time_slot === slot ? 'rgba(139, 92, 246, 0.1)' : 'var(--bg)',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          fontWeight: formData.time_slot === slot ? 'bold' : 'normal',
+                          color: formData.time_slot === slot ? 'var(--p1)' : 'var(--txt)',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
                         {slot}
                       </div>
                     ))}

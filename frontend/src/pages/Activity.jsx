@@ -93,7 +93,9 @@ export default function Activity() {
         };
       });
 
-    return [...myDonations, ...myRequests].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return [...myDonations, ...myRequests]
+      .filter(act => act.status !== 'completed' && act.status !== 'expired' && act.status !== 'cancelled')
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   };
 
   const activities = getMyActivity();

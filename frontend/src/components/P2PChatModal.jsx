@@ -200,7 +200,7 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {activity && activity.status !== 'completed' && !isComplete && currentUserRole !== 'volunteer' && (
+            {activity && activity.status !== 'completed' && !isComplete && currentUserRole !== 'volunteer' && partnerRole !== 'volunteer' && (
               <>
                 <button 
                   className="btn btn-sm" 

@@ -7,6 +7,11 @@ export default function Login() {
   const navigate = useNavigate();
   const [tab, setTab] = useState('signin');
   const [error, setError] = useState('');
+  
+  // Admin Popup State
+  const [showAdminPopup, setShowAdminPopup] = useState(false);
+  const [adminPwd, setAdminPwd] = useState('');
+  const [adminErr, setAdminErr] = useState('');
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -75,6 +80,42 @@ export default function Login() {
 
   return (
     <div className="page active" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {showAdminPopup && (
+        <div className="modal-bg" style={{ zIndex: 9999, backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.4)' }}>
+          <div className="modal-box" style={{ maxWidth: '350px', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.4)', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+            <div className="modal-head" style={{ borderBottom: 'none', paddingBottom: '0' }}>
+              <div className="modal-title" style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.5rem' }}>⚙️</span> Admin Access
+              </div>
+              <button className="x-btn" onClick={() => setShowAdminPopup(false)}>✕</button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              <p style={{ color: 'var(--txt1)', fontSize: '0.85rem', marginBottom: '16px', marginTop: '0' }}>Enter master password to access system controls.</p>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (adminPwd === 'assara' || adminPwd === 'admin123') {
+                  updateApp({ user: 'admin_sys', role: 'admin', name: 'System Admin', emoji: '⚙️', prevPage: 'admin' });
+                  navigate('/admin');
+                } else {
+                  setAdminErr('Incorrect password');
+                }
+              }}>
+                <input 
+                  type="password" 
+                  autoFocus
+                  placeholder="Master password..." 
+                  value={adminPwd}
+                  onChange={e => { setAdminPwd(e.target.value); setAdminErr(''); }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--border)', fontSize: '1rem', marginBottom: '10px', background: 'rgba(255,255,255,0.9)' }}
+                />
+                {adminErr && <div style={{ color: '#dc2626', fontSize: '0.8rem', marginBottom: '10px', fontWeight: 'bold' }}>{adminErr}</div>}
+                <button type="submit" className="btn btn-primary btn-full" style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)', border: 'none', color: 'white', padding: '10px' }}>Authenticate</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="login-card" style={{ maxWidth: '460px', width: '100%' }}>
         <div className="login-logo" style={{ position: 'relative' }}>
           <div className="licon">🌱</div>
@@ -92,13 +133,7 @@ export default function Login() {
             }}
             onMouseOver={(e) => e.currentTarget.style.opacity = '1'}
             onMouseOut={(e) => e.currentTarget.style.opacity = '0.6'}
-            onClick={() => {
-              const pwd = window.prompt('Enter Admin Password:');
-              if (pwd) { // Accept any for MVP demo, or specifically check "admin"
-                updateApp({ user: 'admin_sys', role: 'admin', name: 'System Admin' });
-                navigate('/admin');
-              }
-            }}
+            onClick={() => setShowAdminPopup(true)}
           >
             ⚙️
           </button>

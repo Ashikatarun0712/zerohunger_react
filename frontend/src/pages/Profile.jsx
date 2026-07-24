@@ -232,13 +232,26 @@ export default function Profile() {
       <div className="dash-wrap">
         {/* 3. Stats Grid with 4th card */}
         <div className="stats-grid">
-          <div className="stat-card"><div className="stat-num">{myDons}</div><div className="stat-lbl">Donations</div></div>
-          <div className="stat-card"><div className="stat-num">{myReqs}</div><div className="stat-lbl">Requests</div></div>
-          <div className="stat-card"><div className="stat-num">7</div><div className="stat-lbl">Volunteers</div></div>
-          <div className="stat-card"><div className="stat-num">91%</div><div className="stat-lbl">AI Score</div></div>
+          {appState.role === 'admin' ? (
+            <>
+              <div className="stat-card"><div className="stat-num">{db.trusts?.length || 0}</div><div className="stat-lbl">Total Trusts</div></div>
+              <div className="stat-card"><div className="stat-num">{db.trusts?.filter(t => t.verification_status === 'verified').length || 0}</div><div className="stat-lbl">Verified NGOs</div></div>
+              <div className="stat-card"><div className="stat-num">{db.trusts?.filter(t => t.verification_status === 'pending').length || 0}</div><div className="stat-lbl" style={{ color: '#d97706' }}>Pending Reviews</div></div>
+              <div className="stat-card"><div className="stat-num" style={{ color: '#db2777' }}>{db.notifications?.length || 0}</div><div className="stat-lbl">System Alerts</div></div>
+            </>
+          ) : (
+            <>
+              <div className="stat-card"><div className="stat-num">{myDons}</div><div className="stat-lbl">Donations</div></div>
+              <div className="stat-card"><div className="stat-num">{myReqs}</div><div className="stat-lbl">Requests</div></div>
+              <div className="stat-card"><div className="stat-num">7</div><div className="stat-lbl">Volunteers</div></div>
+              <div className="stat-card"><div className="stat-num">91%</div><div className="stat-lbl">AI Score</div></div>
+            </>
+          )}
         </div>
         
         {/* 4. AI Cert with missing metrics */}
+        {appState.role !== 'admin' && (
+          <>
         <div className="profile-ai-cert">
           <div className="cert-header">
             <div className="cert-title">🏅 ZeroHungerVision AI System Status</div>
@@ -305,9 +318,13 @@ export default function Profile() {
             </div>
           </div>
         </div>
+          </>
+        )}
         
         <div className="module-grid">
-          <div className="mod-card module-card" onClick={() => navigate('/donor')}>
+          {appState.role !== 'admin' && (
+            <>
+              <div className="mod-card module-card" onClick={() => navigate('/donor')}>
             <div className="mod-icon" style={{ background: '#dbeafe', color: '#2563eb' }}>🎁</div>
             <div className="mod-title" style={{ fontWeight: 800, marginBottom: '5px' }}>Donor Module</div>
             <div className="mod-desc">Donate food with TensorFlow MobileNet freshness scan & expiry prediction.</div>
@@ -339,6 +356,9 @@ export default function Profile() {
             <div className="mod-title" style={{ fontWeight: 800, marginBottom: '5px' }}>My Live Activity</div>
             <div className="mod-desc">View your live donations, history, requests, and P2P chats.</div>
           </div>
+            </>
+          )}
+
           {appState.role === 'admin' && (
             <div className="mod-card module-card" onClick={() => navigate('/admin')}>
               <div className="mod-icon" style={{ background: '#f3f4f6', color: '#1f2937' }}>⚙️</div>

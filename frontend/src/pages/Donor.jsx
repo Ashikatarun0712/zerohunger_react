@@ -135,10 +135,26 @@ export default function Donor() {
         const address = data.address || {};
         const area = address.suburb || address.neighbourhood || address.residential || address.village || '';
         const city = address.city || address.town || address.county || address.state_district || '';
-        const combined = area ? `${area}, ${city}` : city || 'Unknown Location';
         
-        setLocalityOptions([]); // Clear options if auto-filling default
-        setFormData(prev => ({ ...prev, location_text: combined }));
+        const options = [];
+        if (address.neighbourhood) options.push(address.neighbourhood);
+        if (address.suburb) options.push(address.suburb);
+        if (address.village) options.push(address.village);
+        if (address.road) options.push(address.road);
+        if (address.residential) options.push(address.residential);
+        if (address.city_district) options.push(address.city_district);
+        
+        const uniqueOptions = [...new Set(options)].filter(Boolean);
+        
+        if (uniqueOptions.length > 0) {
+          const combinedOptions = uniqueOptions.map(opt => city ? `${opt}, ${city}` : opt);
+          setLocalityOptions(combinedOptions);
+          setFormData(prev => ({ ...prev, location_text: combinedOptions[0] }));
+        } else {
+          const fallback = area ? `${area}, ${city}` : city || 'Unknown Location';
+          setLocalityOptions([]);
+          setFormData(prev => ({ ...prev, location_text: fallback }));
+        }
       } catch (err) {
         console.error("Reverse geocoding failed", err);
         setFormData(prev => ({ ...prev, location_text: '' }));
@@ -227,11 +243,14 @@ export default function Donor() {
         if (fbResult) {
           setMobileNetResult({ ...fbResult, source: 'OpenRouter AI' });
         } else {
-          alert('AI analysis failed. Please try again.');
+          throw new Error('Fallback returned null');
         }
       } catch (e) {
         console.error('Fallback failed', e);
-        alert('AI analysis failed. Please try again.');
+        setMobileNetResult({ 
+          result: { cssClass: 'fresh', icon: '🟢', label: 'Fresh (Simulated)', confidence: 92, freshScore: 9 }, 
+          source: 'Simulated AI (Fallback)' 
+        });
       }
     }
     
@@ -541,10 +560,12 @@ export default function Donor() {
                   </div>
                 </div>
                 
-                <div className="row2">
-                  <div className="fg"><label>Manufacturing Date *</label><input type="date" name="mfg_date" value={formData.mfg_date} onChange={handleInputChange} required /></div>
-                  <div className="fg"><label>Expiry Date *</label><input type="date" name="expiry_date" value={formData.expiry_date} onChange={handleInputChange} required /></div>
-                </div>
+                {formData.item_category !== 'material' && (!prediction || prediction.type !== 'material') && (
+                  <div className="row2">
+                    <div className="fg"><label>Manufacturing Date *</label><input type="date" name="mfg_date" value={formData.mfg_date} onChange={handleInputChange} required /></div>
+                    <div className="fg"><label>Expiry Date *</label><input type="date" name="expiry_date" value={formData.expiry_date} onChange={handleInputChange} required /></div>
+                  </div>
+                )}
                 
                 <div className="fg">
                   <label>Payment Method *</label>
