@@ -22,6 +22,7 @@ const initialDB = {
   messages: [],
   platform_stats: null,
   mass_donations: [],
+  users: [],
   nid: { don: 1, req: 1, vol: 1, notif: 1, fund: 1, msg: 1 }
 };
 
@@ -88,13 +89,18 @@ export const AppProvider = ({ children }) => {
     document.documentElement.setAttribute('data-theme', activeTheme);
   }, [appState.theme]);
 
+  // Auto sync database on startup
+  useEffect(() => {
+    syncDatabase();
+  }, []);
+
   const updateApp = (updates) => {
     setAppState((prev) => ({ ...prev, ...updates }));
   };
 
   const syncDatabase = async () => {
     try {
-      const [donRes, reqRes, volRes, ratRes, trustRes, fundRes, msgRes, statRes, notifRes, massRes] = await Promise.all([
+      const [donRes, reqRes, volRes, ratRes, trustRes, fundRes, msgRes, statRes, notifRes, massRes, userRes] = await Promise.all([
         supabaseClient.from('donations').select('*'),
         supabaseClient.from('requests').select('*'),
         supabaseClient.from('volunteers').select('*'),
@@ -104,7 +110,8 @@ export const AppProvider = ({ children }) => {
         supabaseClient.from('messages').select('*'),
         supabaseClient.from('platform_stats').select('*').single(),
         supabaseClient.from('notifications').select('*'),
-        supabaseClient.from('mass_donations').select('*')
+        supabaseClient.from('mass_donations').select('*'),
+        supabaseClient.from('users').select('*')
       ]);
 
       if (donRes.error) console.error('donations fetch error:', donRes.error);
@@ -118,18 +125,38 @@ export const AppProvider = ({ children }) => {
         return d;
       });
 
+      const fetchedTrusts = trustRes.data || [];
+      const fetchedUsers = userRes.data || [];
+
+      // Merge trust role user accounts into db.trusts if not already present
+      const combinedTrusts = [...fetchedTrusts];
+      fetchedUsers.filter(u => u.role === 'trust').forEach(u => {
+        const exists = combinedTrusts.some(t => t.trust_username === u.username || t.trust_name === u.name);
+        if (!exists) {
+          combinedTrusts.push({
+            id: `usr_${u.id}`,
+            trust_username: u.username,
+            trust_name: u.name || u.username,
+            reg_number: `REG-${u.username.toUpperCase()}`,
+            verification_status: 'pending',
+            is_user_account: true
+          });
+        }
+      });
+
       setDb(prev => ({
         ...prev,
         donations: newDonations,
         requests: reqRes.data || [],
         volunteers: volRes.data || [],
         ratings: ratRes.data || [],
-        trusts: trustRes.data || [],
+        trusts: combinedTrusts,
         fund_requests: fundRes.data || [],
         messages: msgRes.data || [],
         platform_stats: statRes?.data || null,
         notifications: notifRes.data || [],
-        mass_donations: massRes?.data || []
+        mass_donations: massRes?.data || [],
+        users: fetchedUsers
       }));
     } catch (e) {
       console.error('Sync error:', e);

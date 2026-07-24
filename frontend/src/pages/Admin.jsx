@@ -23,7 +23,10 @@ export default function Admin() {
   const volCount = db.volunteers?.length || 0;
 
   useEffect(() => {
+    syncDatabase();
+  }, []);
 
+  useEffect(() => {
     // Destroy previous charts if they exist
     const charts = [];
     
@@ -81,7 +84,19 @@ export default function Admin() {
     if (!window.confirm('✅ Approve and verify this Trust?')) return;
     setIsProcessing(true);
     try {
-      await supabaseClient.from('trusts').update({ verification_status: 'verified' }).eq('id', id);
+      if (typeof id === 'string' && id.startsWith('usr_')) {
+        const trustItem = db.trusts?.find(t => t.id === id);
+        if (trustItem) {
+          await supabaseClient.from('trusts').insert([{
+            trust_username: trustItem.trust_username,
+            trust_name: trustItem.trust_name,
+            reg_number: trustItem.reg_number,
+            verification_status: 'verified'
+          }]);
+        }
+      } else {
+        await supabaseClient.from('trusts').update({ verification_status: 'verified' }).eq('id', id);
+      }
       await syncDatabase();
       if (window.showToast) window.showToast('Trust verified successfully.', 'ok');
     } catch (e) {
@@ -95,13 +110,28 @@ export default function Admin() {
     if (!window.confirm('🚫 Reject and delete this Trust application?')) return;
     setIsProcessing(true);
     try {
-      await supabaseClient.from('trusts').delete().eq('id', id);
+      if (typeof id === 'string' && id.startsWith('usr_')) {
+        const trustItem = db.trusts?.find(t => t.id === id);
+        if (trustItem) {
+          await supabaseClient.from('trusts').insert([{
+            trust_username: trustItem.trust_username,
+            trust_name: trustItem.trust_name,
+            reg_number: trustItem.reg_number,
+            verification_status: 'rejected'
+          }]);
+        }
+      } else {
+        await supabaseClient.from('trusts').delete().eq('id', id);
+      }
       await syncDatabase();
       if (window.showToast) window.showToast('Trust application rejected.', 'ok');
     } catch (e) {
       console.error(e);
       alert('Failed to delete trust');
     }
+    setIsProcessing(false);
+  };
+
   return (
     <div className="page active">
       {/* Notifications Modal */}
