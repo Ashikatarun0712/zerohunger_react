@@ -37,26 +37,14 @@ export default function Volunteer() {
   const uLng = appState.userLng || 78.1198;
 
   const nearbyJobs = (db.requests || []).filter(req => {
-    // Only show jobs that need a volunteer
-    if (!(req.urgency && req.urgency.includes('_VOL'))) return false;
-    
-    // Exclude completed or expired jobs
+    // Exclude completed, cancelled, or expired jobs
     if (req.status === 'completed' || req.status === 'expired' || req.status === 'cancelled') return false;
     
     // If a volunteer has already claimed this specific request, hide it
-    const hasVolunteer = (db.volunteers || []).some(v => v.assigned_req_id === req.id);
+    const hasVolunteer = (db.volunteers || []).some(v => v.assigned_req_id === req.id) || Boolean(req.assigned_to);
     if (hasVolunteer) return false;
     
-    // If it's already processing (donor linked), check distance
-    if (req.status === 'processing' && req.donation_id) {
-      const don = (db.donations || []).find(d => d.id === req.donation_id);
-      if (don && don.lat && don.lng) {
-        const dist = calculateDistance(uLat, uLng, don.lat, don.lng);
-        return dist <= 20; // Increased radius to 20km to ensure visibility
-      }
-    }
-    
-    return true; // If it's pending (no donor yet), show it so volunteer can claim intent early
+    return true;
   }).map(req => {
     let don = null;
     let dist = 0;

@@ -81,70 +81,63 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
       const payload = {
         sender_username: currentUser,
         receiver_username: partner,
-        message_text: `🤝 ${currentUser} has agreed to fulfill the transaction!`,
+        message_text: `🤝 ${currentUser} has agreed and fulfilled the transaction!`,
         context_type: 'handshake'
       };
       await supabaseClient.from('messages').insert([payload]);
 
-      if (partnerHandshake) {
-        // Both shook hands, complete the transaction
-        const uCurrent = (currentUser || '').toLowerCase();
-        const uPartner = (partner || '').toLowerCase();
+      // Complete the transaction in database directly
+      const uCurrent = (currentUser || '').toLowerCase();
+      const uPartner = (partner || '').toLowerCase();
 
-        let reqToUpdate = null;
-        if (activity && (activity.type === 'Request' || activity.req_username || activity.food_name)) {
-          reqToUpdate = activity;
-        } else {
-          reqToUpdate = (db.requests || []).find(r => {
-            const rUser = (r.req_username || r.req_name || '').toLowerCase();
-            const rAssign = (r.assigned_to || r.claimed_by || '').toLowerCase();
-            return (rUser === uCurrent && rAssign === uPartner) || (rUser === uPartner && rAssign === uCurrent);
-          });
-        }
-
-        let donToUpdate = null;
-        if (activity && (activity.type === 'Donation' || activity.donor_username)) {
-          donToUpdate = activity;
-        } else {
-          donToUpdate = (db.donations || []).find(d => {
-            const dUser = (d.donor_username || d.donor_name || '').toLowerCase();
-            const dClaim = (d.claimed_by || d.assigned_to || '').toLowerCase();
-            return (dUser === uCurrent && dClaim === uPartner) || (dUser === uPartner && dClaim === uCurrent);
-          });
-        }
-
-        if (reqToUpdate && reqToUpdate.donation_id && !donToUpdate) {
-          donToUpdate = (db.donations || []).find(d => d.id === reqToUpdate.donation_id);
-        }
-
-        if (reqToUpdate && reqToUpdate.id) {
-          await supabaseClient.from('requests').update({ status: 'completed' }).eq('id', reqToUpdate.id);
-        }
-
-        if (donToUpdate && donToUpdate.id) {
-          if (reqToUpdate && donToUpdate.quantity > (reqToUpdate.quantity || 0) && (reqToUpdate.quantity || 0) > 0) {
-             const newQty = donToUpdate.quantity - reqToUpdate.quantity;
-             await supabaseClient.from('donations').update({ status: 'available', quantity: newQty, claimed_by: null }).eq('id', donToUpdate.id);
-          } else {
-             await supabaseClient.from('donations').update({ status: 'completed' }).eq('id', donToUpdate.id);
-          }
-        }
-
-        // Delete all chat messages between these two users (chat cannot be reinitiated)
-        const msgIds = chatMessages.map(m => m.id);
-        if (msgIds.length > 0) {
-           await supabaseClient.from('messages').delete().in('id', msgIds);
-        }
-
-        await syncDatabase();
-        setTimeout(() => {
-          alert('Transaction Completed & Chat Deleted!');
-          onClose();
-        }, 500);
-        return; // exit early since onClose handles it
+      let reqToUpdate = null;
+      if (activity && (activity.type === 'Request' || activity.req_username || activity.food_name)) {
+        reqToUpdate = activity;
+      } else {
+        reqToUpdate = (db.requests || []).find(r => {
+          const rUser = (r.req_username || r.req_name || '').toLowerCase();
+          const rAssign = (r.assigned_to || r.claimed_by || '').toLowerCase();
+          return (rUser === uCurrent || rUser === uPartner || rAssign === uCurrent || rAssign === uPartner);
+        });
       }
-      
+
+      let donToUpdate = null;
+      if (activity && (activity.type === 'Donation' || activity.donor_username)) {
+        donToUpdate = activity;
+      } else {
+        donToUpdate = (db.donations || []).find(d => {
+          const dUser = (d.donor_username || d.donor_name || '').toLowerCase();
+          const dClaim = (d.claimed_by || d.assigned_to || '').toLowerCase();
+          return (dUser === uCurrent || dUser === uPartner || dClaim === uCurrent || dClaim === uPartner);
+        });
+      }
+
+      if (reqToUpdate && reqToUpdate.donation_id && !donToUpdate) {
+        donToUpdate = (db.donations || []).find(d => d.id === reqToUpdate.donation_id);
+      }
+
+      if (reqToUpdate && reqToUpdate.id) {
+        await supabaseClient.from('requests').update({ status: 'completed' }).eq('id', reqToUpdate.id);
+      }
+
+      if (donToUpdate && donToUpdate.id) {
+        await supabaseClient.from('donations').update({ status: 'completed' }).eq('id', donToUpdate.id);
+      }
+
       await syncDatabase();
+      if (window.showToast) window.showToast("🤝 Transaction completed successfully!", "ok");
+
+      // Delete all chat messages between these two users (chat cannot be reinitiated)
+      const msgIds = chatMessages.map(m => m.id);
+      if (msgIds.length > 0) {
+        await supabaseClient.from('messages').delete().in('id', msgIds);
+      }
+
+      await syncDatabase();
+      setTimeout(() => {
+        alert('Transaction Completed & Chat Closed!');
+        onClose();
+      }, 500);
     } catch (err) {
       console.error(err);
       alert('Handshake failed');

@@ -319,7 +319,13 @@ export default function Trust() {
             <h3>Donation & Fulfillment Status</h3>
           </div>
           <div>
-            {db.requests?.filter(r => r.req_username === appState.user && r.priority_score === 90).length === 0 ? (
+            {(db.requests || []).filter(r => {
+              const un = (appState.user || '').toLowerCase();
+              const nameUn = (appState.name || '').toLowerCase();
+              const rUser = (r.req_username || '').toLowerCase();
+              const rName = (r.req_name || '').toLowerCase();
+              return (un && (rUser === un || rName === un)) || (nameUn && (rUser === nameUn || rName === nameUn));
+            }).length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', opacity: 0.5 }}>
                 <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📭</div>
                 <p style={{ margin: 0, fontSize: '0.95rem' }}>No bulk food requests published yet.</p>
@@ -334,7 +340,13 @@ export default function Trust() {
                   </tr>
                 </thead>
                 <tbody>
-                  {db.requests?.filter(r => r.req_username === appState.user && r.priority_score === 90).map((req, idx) => (
+                  {(db.requests || []).filter(r => {
+                    const un = (appState.user || '').toLowerCase();
+                    const nameUn = (appState.name || '').toLowerCase();
+                    const rUser = (r.req_username || '').toLowerCase();
+                    const rName = (r.req_name || '').toLowerCase();
+                    return (un && (rUser === un || rName === un)) || (nameUn && (rUser === nameUn || rName === nameUn));
+                  }).map((req, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #1e293b' }}>
                       <td style={{ padding: '12px' }}>{req.food_name}</td>
                       <td style={{ padding: '12px', fontWeight: 'bold' }}>{req.quantity}</td>

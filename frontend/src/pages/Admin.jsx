@@ -1,10 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext, supabaseClient } from '../store/AppContext';
 import Chart from 'chart.js/auto';
 import LeafletMap from '../components/LeafletMap';
 
 export default function Admin() {
-  const { db, syncDatabase } = useAppContext();
+  const { db, updateApp, syncDatabase } = useAppContext();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    updateApp({ user: null, role: null, name: null });
+    navigate('/');
+  };
   
   const chDonRef = useRef(null);
   const chReqRef = useRef(null);
@@ -256,9 +263,18 @@ export default function Admin() {
       <div className="dash-wrap">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div className="sec-title" style={{ margin: 0 }}>⚙️ Admin Control Panel</div>
-          <button className="btn btn-primary" onClick={syncDatabase} disabled={isProcessing} style={{ padding: '8px 16px', borderRadius: '8px' }}>
-            {isProcessing ? '⏳ Syncing...' : '🔄 Force Sync'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button className="btn btn-primary" onClick={syncDatabase} disabled={isProcessing} style={{ padding: '8px 16px', borderRadius: '8px' }}>
+              {isProcessing ? '⏳ Syncing...' : '🔄 Force Sync'}
+            </button>
+            <button 
+              className="btn btn-ghost btn-sm" 
+              onClick={handleLogout} 
+              style={{ padding: '8px 16px', borderRadius: '8px', background: 'var(--r1)', borderColor: 'var(--r1)', color: '#ffffff', fontWeight: 600 }}
+            >
+              🚪 Logout
+            </button>
+          </div>
         </div>
         
         {/* Interactive Stats Grid */}

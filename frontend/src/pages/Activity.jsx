@@ -31,8 +31,6 @@ export default function Activity() {
     try {
       const table = cancelAct.type === 'Donation' ? 'donations' : 'requests';
       
-      // Update status to 'cancelled' and append the reason to notes/description if possible, 
-      // or simply update status since cancel_reason column might not exist yet.
       const { error } = await supabaseClient
         .from(table)
         .update({ status: 'cancelled' })
@@ -40,7 +38,6 @@ export default function Activity() {
         
       if (error) throw error;
       
-      // Attempt to save reason if column exists, else it fails silently
       await supabaseClient.from(table).update({ cancel_reason: cancelReason }).eq('id', cancelAct.id).catch(() => {});
       
       await syncDatabase();
@@ -54,29 +51,60 @@ export default function Activity() {
     }
   };
 
+  const handleMarkComplete = async (act) => {
+    if (!window.confirm("Mark this transaction as Completed?")) return;
+    try {
+      const table = act.type === 'Donation' ? 'donations' : 'requests';
+      await supabaseClient.from(table).update({ status: 'completed' }).eq('id', act.id);
+      if (act.donation_id) {
+        await supabaseClient.from('donations').update({ status: 'completed' }).eq('id', act.donation_id).catch(() => {});
+      }
+      await syncDatabase();
+      if (window.showToast) window.showToast("🤝 Activity marked as completed!", "ok");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to mark complete.");
+    }
+  };
+
   const getMyActivity = () => {
     const un = (appState.user || '').toLowerCase();
     const unName = (appState.name || '').toLowerCase();
-    const myDonations = db.donations
-      .filter(d => (d.donor_username || '').toLowerCase() === un || (d.claimed_by || '').toLowerCase() === unName)
+
+    const myDonations = (db.donations || [])
+      .filter(d => {
+        const du = (d.donor_username || '').toLowerCase();
+        const dn = (d.donor_name || '').toLowerCase();
+        const cb = (d.claimed_by || '').toLowerCase();
+        return (un && (du === un || dn === un || cb === un)) || (unName && (du === unName || dn === unName || cb === unName));
+      })
       .map(d => {
-        const isMine = (d.donor_username || '').toLowerCase() === un;
-        const linkedReq = db.requests.find(rq => rq.donation_id === d.id);
+        const du = (d.donor_username || '').toLowerCase();
+        const dn = (d.donor_name || '').toLowerCase();
+        const isMine = du === un || dn === un || (unName && (du === unName || dn === unName));
+        const linkedReq = (db.requests || []).find(rq => rq.donation_id === d.id);
         const isPartnerTrust = linkedReq && linkedReq.priority_score === 90;
         return { 
           ...d, 
           type: 'Donation', 
-          partner: isMine ? (d.claimed_by || '—') : (d.donor_name || '—'),
+          partner: isMine ? (d.claimed_by || '—') : (d.donor_name || d.donor_username || '—'),
           partnerRole: isMine ? (d.claimed_by ? (isPartnerTrust ? 'trust' : 'receiver') : null) : 'donor',
           myRole: isMine ? 'donor' : (isPartnerTrust ? 'trust' : 'receiver'),
           action: (isMine && d.status === 'available') ? 'Cancel' : '—' 
         };
       });
     
-    const myRequests = db.requests
-      .filter(r => (r.req_username || '').toLowerCase() === un || (r.assigned_to || '').toLowerCase() === unName)
+    const myRequests = (db.requests || [])
+      .filter(r => {
+        const ru = (r.req_username || '').toLowerCase();
+        const rn = (r.req_name || '').toLowerCase();
+        const at = (r.assigned_to || '').toLowerCase();
+        return (un && (ru === un || rn === un || at === un)) || (unName && (ru === unName || rn === unName || at === unName));
+      })
       .map(r => {
-        const isMine = (r.req_username || '').toLowerCase() === un;
+        const ru = (r.req_username || '').toLowerCase();
+        const rn = (r.req_name || '').toLowerCase();
+        const isMine = ru === un || rn === un || (unName && (ru === unName || rn === unName));
         const isTrust = r.priority_score === 90;
         return { 
           ...r, 
@@ -84,11 +112,11 @@ export default function Activity() {
           food_name: r.food_name, 
           qty: r.quantity || 0, 
           status: r.status, 
-          partner: isMine ? (r.assigned_to || '—') : (r.req_name || '—'), 
+          partner: isMine ? (r.assigned_to || '—') : (r.req_name || r.req_username || '—'), 
           partnerRole: isMine 
-            ? (r.assigned_to ? (db.volunteers.some(v => v.vol_name === r.assigned_to) ? 'volunteer' : 'donor') : null) 
+            ? (r.assigned_to ? ((db.volunteers || []).some(v => v.vol_name === r.assigned_to || v.vol_username === r.assigned_to) ? 'volunteer' : 'donor') : null) 
             : (isTrust ? 'trust' : 'receiver'),
-          myRole: isMine ? (isTrust ? 'trust' : 'receiver') : (db.volunteers.some(v => v.vol_name === appState.name) ? 'volunteer' : 'donor'),
+          myRole: isMine ? (isTrust ? 'trust' : 'receiver') : ((db.volunteers || []).some(v => v.vol_name === appState.name || v.vol_username === appState.user) ? 'volunteer' : 'donor'),
           action: (isMine && r.status === 'pending') ? 'Cancel' : '—' 
         };
       });
@@ -201,6 +229,15 @@ export default function Activity() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px' }}>
+                          {act.status !== 'completed' && (
+                            <button 
+                              className="btn btn-sm" 
+                              style={{ background: '#dcfce7', color: '#15803d', fontWeight: 600, border: '1px solid #bbf7d0', cursor: 'pointer' }}
+                              onClick={() => handleMarkComplete(act)}
+                            >
+                              🤝 Complete
+                            </button>
+                          )}
                           {act.partner !== '—' && act.status !== 'completed' && (
                             <button 
                               className="btn btn-sm btn-outline" 
