@@ -131,7 +131,18 @@ export default function Request() {
     if (!supabaseClient) return alert('Supabase client not initialized');
     
     const selectedDonation = availableMatches.find(m => m.id.toString() === formData.req_food_sel);
-    if (!selectedDonation && formData.req_food_sel) return alert('Invalid item selected');
+    if (!selectedDonation && formData.req_food_sel !== 'basic' && formData.req_food_sel !== 'custom') {
+      return alert('Invalid item selected');
+    }
+    
+    let finalFoodName = 'Custom Request';
+    if (formData.req_food_sel === 'basic') {
+      finalFoodName = 'Basic Food / Meals Needed';
+    } else if (formData.req_food_sel === 'custom') {
+      finalFoodName = formData.custom_food_name || 'Custom Request';
+    } else if (selectedDonation) {
+      finalFoodName = selectedDonation.food_name;
+    }
     
     let finalPriority = formData.req_urgency === 'High' ? 60 : 30;
     if (selectedDonation) {
@@ -152,12 +163,11 @@ export default function Request() {
     const payload = {
       req_username: appState.user || '',
       req_name: formData.req_name,
-      food_name: selectedDonation ? selectedDonation.food_name : 'Custom Request',
+      food_name: finalFoodName,
       quantity: parseInt(formData.req_qty),
-      urgency: formData.req_urgency,
+      urgency: formData.req_urgency + (formData.needs_volunteer ? '_VOL' : ''),
       location_label: `${formData.req_area}, ${formData.req_city}`,
       status: 'pending',
-      needs_volunteer: formData.needs_volunteer,
       priority_score: Math.min(100, Math.round(finalPriority))
     };
 
@@ -174,7 +184,7 @@ export default function Request() {
         await supabaseClient.from('donations').update({ status: 'requested' }).eq('id', selectedDonation.id);
       }
       alert('Request submitted successfully!');
-      setFormData({ ...formData, req_qty: '', req_food_sel: '' });
+      setFormData({ ...formData, req_qty: '', req_food_sel: '', custom_food_name: '' });
       syncDatabase();
     }
   };
@@ -241,14 +251,22 @@ export default function Request() {
                   <label>Select Item *</label>
                   <select name="req_food_sel" value={formData.req_food_sel} onChange={handleInputChange} required style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-sm)', fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: '.9rem', color: 'var(--txt)', background: '#fff', outline: 'none' }}>
                     <option value="">-- Select Item --</option>
+                    <option value="basic" style={{ fontWeight: 'bold', color: 'var(--p1)' }}>🍲 Basic Food / Meals Needed</option>
                     {availableMatches.map((d) => (
                       <option key={d.id} value={d.id}>{d.food_name} by {d.donor_name} — {d.quantity} units</option>
                     ))}
-                    <option value="custom">-- Request Different Item --</option>
+                    <option value="custom">✏️ Type a Custom Request...</option>
                   </select>
                 </div>
+
+                {formData.req_food_sel === 'custom' && (
+                  <div className="fg" style={{ marginTop: '10px' }}>
+                    <label>Specify Custom Item *</label>
+                    <input name="custom_food_name" value={formData.custom_food_name || ''} onChange={handleInputChange} placeholder="e.g., Baby Formula, Specific Medicine..." required />
+                  </div>
+                )}
                 
-                {formData.req_food_sel && formData.req_food_sel !== 'custom' && (
+                {formData.req_food_sel && formData.req_food_sel !== 'custom' && formData.req_food_sel !== 'basic' && (
                   <div style={{ padding: '10px', background: '#eff6ff', borderRadius: '8px', fontSize: '.84rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                     <span style={{ fontSize: '1.2rem' }}>📍</span>
                     <div>

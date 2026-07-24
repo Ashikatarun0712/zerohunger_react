@@ -36,7 +36,7 @@ export default function Volunteer() {
   const uLng = appState.userLng || 78.1198;
 
   const nearbyJobs = (db.requests || []).filter(req => {
-    if (req.status !== 'pending' || req.assigned_to || !req.needs_volunteer) return false;
+    if (req.status !== 'pending' || req.assigned_to || !(req.urgency && req.urgency.includes('_VOL'))) return false;
     const don = (db.donations || []).find(d => d.id === req.donation_id);
     if (!don) return false;
     const dist = calculateDistance(uLat, uLng, don.lat, don.lng);

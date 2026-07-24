@@ -179,6 +179,7 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
     if (role === 'donor') return '#10b981'; // Green
     if (role === 'volunteer') return '#fb923c'; // Orange
     if (role === 'receiver') return '#3b82f6'; // Blue
+    if (role === 'trust') return '#eab308'; // Yellow
     return '#94a3b8'; // Default Gray
   };
 
@@ -190,7 +191,7 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
       <div className="modal-box" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '500px' }}>
         
         {/* Header */}
-        <div className="chat-head" style={{ padding: '16px 20px', background: 'var(--card)', borderBottom: '1px solid var(--border)', color: 'var(--txt)' }}>
+        <div className="chat-head" style={{ padding: '16px 20px', background: 'var(--card)', borderBottom: '1px solid var(--border)', color: 'var(--txt)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: partnerColor, boxShadow: `0 0 8px ${partnerColor}` }}></div>
             <div>
@@ -203,7 +204,17 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
               <>
                 <button 
                   className="btn btn-sm" 
-                  style={{ background: '#fee2e2', color: '#dc2626', border: 'none', opacity: isSending ? 0.7 : 1 }}
+                  style={{ 
+                    background: 'rgba(239, 68, 68, 0.1)', 
+                    color: '#ef4444', 
+                    border: '1px solid rgba(239, 68, 68, 0.2)', 
+                    opacity: isSending ? 0.7 : 1,
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s',
+                    cursor: 'pointer'
+                  }}
                   onClick={() => setShowCancelPrompt(!showCancelPrompt)}
                   disabled={isSending}
                 >
@@ -212,10 +223,16 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
                 <button 
                   className="btn btn-sm" 
                   style={{ 
-                    background: myHandshake ? 'var(--bg)' : 'var(--p1)', 
-                    color: myHandshake ? 'var(--txt1)' : '#fff', 
-                    border: myHandshake ? '1px solid var(--border)' : 'none',
-                    opacity: isSending ? 0.7 : 1
+                    background: myHandshake ? 'rgba(245, 158, 11, 0.1)' : 'var(--p1)', 
+                    color: myHandshake ? '#d97706' : '#fff', 
+                    border: myHandshake ? '1px solid rgba(245, 158, 11, 0.3)' : 'none',
+                    opacity: isSending ? 0.7 : 1,
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s',
+                    cursor: 'pointer',
+                    boxShadow: myHandshake ? 'none' : '0 4px 12px rgba(59, 130, 246, 0.3)'
                   }}
                   onClick={handleHandshake}
                   disabled={myHandshake || isSending}
@@ -256,9 +273,9 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
         )}
 
         {/* Messages */}
-        <div className="chat-msgs" style={{ flex: 1, background: 'var(--bg)', padding: '20px' }}>
+        <div className="chat-msgs" style={{ flex: 1, background: '#f8fafc', padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           {chatMessages.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--txt1)', marginTop: '20px' }}>
+            <div style={{ textAlign: 'center', color: 'var(--txt1)', marginTop: '20px', fontWeight: 500 }}>
               No messages yet. Say hello! 👋
             </div>
           ) : (
@@ -268,16 +285,21 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
               
               return (
                 <div key={msg.id} className={`chat-msg ${isMine ? 'user' : 'bot'}`} style={{ 
-                  background: msg.context_type === 'handshake' ? '#fef3c7' : (isMine ? `linear-gradient(135deg, ${msgColor}, ${msgColor}cc)` : 'var(--card)'),
-                  color: msg.context_type === 'handshake' ? '#d97706' : (isMine ? '#fff' : 'var(--txt)'),
-                  border: msg.context_type === 'handshake' ? '1px solid #fcd34d' : (isMine ? 'none' : `1px solid ${partnerColor}40`),
+                  background: msg.context_type === 'handshake' ? 'linear-gradient(135deg, #fef3c7, #fde68a)' : (isMine ? `linear-gradient(135deg, ${msgColor}, ${msgColor}dd)` : '#ffffff'),
+                  color: msg.context_type === 'handshake' ? '#b45309' : (isMine ? '#fff' : 'var(--txt)'),
+                  border: msg.context_type === 'handshake' ? '1px solid #fcd34d' : (isMine ? 'none' : `1px solid rgba(0,0,0,0.05)`),
+                  boxShadow: msg.context_type === 'handshake' ? '0 4px 12px rgba(245, 158, 11, 0.15)' : '0 2px 8px rgba(0,0,0,0.04)',
+                  padding: '10px 16px',
+                  borderRadius: isMine ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
                   position: 'relative',
-                  fontWeight: msg.context_type === 'handshake' ? 'bold' : 'normal',
+                  fontWeight: msg.context_type === 'handshake' ? '600' : '500',
                   textAlign: msg.context_type === 'handshake' ? 'center' : 'left',
-                  alignSelf: msg.context_type === 'handshake' ? 'center' : (isMine ? 'flex-end' : 'flex-start')
+                  alignSelf: msg.context_type === 'handshake' ? 'center' : (isMine ? 'flex-end' : 'flex-start'),
+                  maxWidth: msg.context_type === 'handshake' ? '85%' : '75%',
+                  marginBottom: '12px'
                 }}>
                   {!isMine && msg.context_type !== 'handshake' && (
-                    <div style={{ position: 'absolute', top: '10px', left: '-6px', width: '8px', height: '8px', borderRadius: '50%', background: partnerColor }}></div>
+                    <div style={{ position: 'absolute', top: '-2px', left: '-12px', width: '8px', height: '8px', borderRadius: '50%', background: partnerColor, border: '2px solid #f8fafc' }}></div>
                   )}
                   {msg.message_text}
                 </div>
@@ -288,7 +310,7 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
         </div>
 
         {/* Input Row */}
-        <div className="chat-input-row" style={{ background: 'var(--card)' }}>
+        <div className="chat-input-row" style={{ background: 'var(--card)', padding: '16px 20px', display: 'flex', gap: '12px', borderTop: '1px solid var(--border)' }}>
           <input 
             type="text" 
             placeholder="Type a message..." 
@@ -296,15 +318,33 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             disabled={isSending}
-            style={{ flex: 1, padding: '10px 14px', borderRadius: '20px', border: '1px solid var(--border)' }}
+            style={{ flex: 1, padding: '12px 18px', borderRadius: '24px', border: '1px solid var(--border)', background: 'var(--bg)', outline: 'none', transition: 'border 0.2s' }}
+            onFocus={(e) => e.target.style.borderColor = myColor}
+            onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
           />
           <button 
             className="chat-send" 
             onClick={handleSend} 
             disabled={isSending}
-            style={{ opacity: isSending ? 0.5 : 1 }}
+            style={{ 
+              opacity: isSending ? 0.5 : 1, 
+              background: myColor, 
+              color: '#fff', 
+              border: 'none', 
+              width: '46px', 
+              height: '46px', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              cursor: 'pointer',
+              boxShadow: `0 4px 12px ${myColor}50`,
+              transition: 'transform 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            ➤
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
           </button>
         </div>
       </div>

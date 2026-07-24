@@ -59,6 +59,46 @@ export default function Donor() {
     }
   }, [formData.food_name, formData.item_category]);
 
+  // Automated Cleanup (Cron Job Alternative)
+  useEffect(() => {
+    const runCleanup = async () => {
+      if (!db.requests || !supabaseClient) return;
+      const now = new Date();
+      const expiredReqs = db.requests.filter(r => 
+        r.status === 'pending' && 
+        r.priority_score !== 90 && 
+        r.created_at && 
+        ((now - new Date(r.created_at)) / (1000 * 60 * 60) > 48)
+      );
+      
+      if (expiredReqs.length > 0) {
+        for (let r of expiredReqs) {
+          await supabaseClient.from('requests').update({ status: 'expired' }).eq('id', r.id);
+        }
+      }
+      
+      const expiredDonations = db.donations.filter(d => 
+        d.status === 'available' && 
+        d.expiry_date && 
+        new Date(d.expiry_date) < now
+      );
+      
+      if (expiredDonations.length > 0) {
+        for (let d of expiredDonations) {
+          await supabaseClient.from('donations').update({ status: 'expired' }).eq('id', d.id);
+        }
+      }
+
+      if (expiredReqs.length > 0 || expiredDonations.length > 0) {
+        syncDatabase();
+      }
+    };
+    if (db.requests?.length > 0) {
+      runCleanup();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db.requests?.length]);
+
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -285,49 +325,105 @@ export default function Donor() {
   };
 
   const handleFulfillRequest = async (reqId) => {
-    const myAvail = db.donations.filter(d => (d.donor_name || '').toLowerCase() === (appState.name || '').toLowerCase() && d.status === 'available');
+    const req = db.requests.find(r => r.id === reqId);
+    if (!req) return;
+
+    const myAvail = db.donations.filter(d => (d.donor_username || '').toLowerCase() === (appState.user || '').toLowerCase() && d.status === 'available');
+    
     if (myAvail.length === 0) {
-      const req = db.requests.find(r => r.id === reqId);
-      if (req) {
-        setFormData(prev => ({
-          ...prev,
-          food_name: req.food_name || '',
-          quantity: req.quantity || '',
-          location_text: req.location_label || ''
-        }));
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        if (window.showToast) window.showToast('Please submit this donation to fulfill the request.', 'info');
-      }
+      setFormData(prev => ({
+        ...prev,
+        food_name: req.food_name || '',
+        quantity: req.quantity || '',
+        location_text: req.location_label || ''
+      }));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (window.showToast) window.showToast('Please submit this donation to fulfill the request.', 'info');
       return;
     }
     
-    // For MVP, just auto-link the most recent available donation
     const linkedDonation = myAvail[0];
+    const reqQty = req.quantity;
+    const donQty = linkedDonation.quantity;
+    const maxFulfill = Math.min(reqQty, donQty);
     
-    if (window.confirm(`Fulfill this request using your donation: "${linkedDonation.food_name}"?`)) {
-      const req = db.requests.find(r => r.id === reqId);
+    const promptAmount = window.prompt(`You have ${donQty} units of "${linkedDonation.food_name}". This request needs ${reqQty} units.\nHow many units are you fulfilling?`, maxFulfill.toString());
+    
+    if (promptAmount === null) return; // User cancelled
+    
+    const fulfillAmount = parseInt(promptAmount);
+    if (isNaN(fulfillAmount) || fulfillAmount <= 0 || fulfillAmount > donQty) {
+      return alert("Invalid amount entered. Cannot exceed your available donation.");
+    }
+    
+    const matchedQty = Math.min(fulfillAmount, reqQty);
+    const isDonationFullyUsed = (fulfillAmount === donQty);
+    const isRequestFullySatisfied = (matchedQty === reqQty);
+
+    try {
+      if (isRequestFullySatisfied) {
+        const { error: err1 } = await supabaseClient.from('requests').update({ 
+          status: 'processing',
+          donation_id: linkedDonation.id,
+          assigned_to: appState.name
+        }).eq('id', reqId);
+        if (err1) throw err1;
+      } else {
+        const { error: err2 } = await supabaseClient.from('requests').update({
+          quantity: reqQty - matchedQty
+        }).eq('id', reqId);
+        if (err2) throw err2;
+      }
       
-      // Update request to processing and link the donation
-      await supabaseClient.from('requests').update({ 
-        status: 'processing',
-        donation_id: linkedDonation.id,
-        assigned_to: appState.name
-      }).eq('id', reqId);
+      if (isDonationFullyUsed) {
+        const { error: err3 } = await supabaseClient.from('donations').update({
+          status: 'processing',
+          claimed_by: req.req_name || 'Receiver'
+        }).eq('id', linkedDonation.id);
+        if (err3) throw err3;
+      } else {
+        const { error: err4 } = await supabaseClient.from('donations').update({
+          quantity: donQty - matchedQty
+        }).eq('id', linkedDonation.id);
+        if (err4) throw err4;
+        
+        const clone = {
+          donor_username: linkedDonation.donor_username,
+          donor_name: linkedDonation.donor_name,
+          food_name: linkedDonation.food_name,
+          food_type: linkedDonation.food_type,
+          quantity: matchedQty,
+          location_label: linkedDonation.location_label,
+          lat: linkedDonation.lat,
+          lng: linkedDonation.lng,
+          mfg_date: linkedDonation.mfg_date,
+          expiry_date: linkedDonation.expiry_date,
+          freshness_score: linkedDonation.freshness_score,
+          status: 'processing',
+          pay_type: linkedDonation.pay_type,
+          claimed_by: req.req_name || 'Receiver'
+        };
+        const { error: err5 } = await supabaseClient.from('donations').insert([clone]);
+        if (err5) throw err5;
+      }
       
-      // Update donation status
-      await supabaseClient.from('donations').update({
-        status: 'processing',
-        claimed_by: req?.req_name || 'Receiver'
-      }).eq('id', linkedDonation.id);
-      
-      alert("Handshake initiated! The request is now processing.");
+      alert(`Handshake successful! Committed ${matchedQty} units.`);
       syncDatabase();
+    } catch (err) {
+      console.error(err);
+      alert("Error fulfilling request: " + (err.message || JSON.stringify(err)));
     }
   };
 
   const un = (appState.user || '').toLowerCase();
   const myDonationsList = db.donations.filter(d => (d.donor_username || '').toLowerCase() === un);
-  const pendingRequestsList = db.requests.filter(r => r.status === 'pending' && (r.req_username || '').toLowerCase() !== un);
+  
+  const now = new Date();
+  const pendingRequestsList = db.requests.filter(r => {
+    if (r.status !== 'pending') return false;
+    if ((r.req_username || '').toLowerCase() === un) return false;
+    return true;
+  });
 
   return (
     <div className="page active">
@@ -656,7 +752,12 @@ export default function Donor() {
                   ) : (
                     pendingRequestsList.map((r, i) => (
                       <tr key={i}>
-                        <td style={{ fontWeight: 600 }}>{r.req_name || 'Anonymous'}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          {r.req_name || 'Anonymous'}
+                          {r.priority_score === 90 && (
+                            <span style={{ marginLeft: '6px', background: '#fbbf24', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px' }} title="Verified Trust Bulk Request">🏛️ TRUST</span>
+                          )}
+                        </td>
                         <td>{r.food_name} <span style={{ color: 'var(--txt1)', fontSize: '0.8rem' }}>(x{r.quantity})</span></td>
                         <td style={{ fontSize: '0.85rem' }}>{r.location_label}</td>
                         <td>

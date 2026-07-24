@@ -61,12 +61,14 @@ export default function Activity() {
       .filter(d => (d.donor_username || '').toLowerCase() === un || (d.claimed_by || '').toLowerCase() === unName)
       .map(d => {
         const isMine = (d.donor_username || '').toLowerCase() === un;
+        const linkedReq = db.requests.find(rq => rq.donation_id === d.id);
+        const isPartnerTrust = linkedReq && linkedReq.priority_score === 90;
         return { 
           ...d, 
           type: 'Donation', 
           partner: isMine ? (d.claimed_by || '—') : (d.donor_name || '—'),
-          partnerRole: isMine ? (d.claimed_by ? 'receiver' : null) : 'donor',
-          myRole: isMine ? 'donor' : 'receiver',
+          partnerRole: isMine ? (d.claimed_by ? (isPartnerTrust ? 'trust' : 'receiver') : null) : 'donor',
+          myRole: isMine ? 'donor' : (isPartnerTrust ? 'trust' : 'receiver'),
           action: (isMine && d.status === 'available') ? 'Cancel' : '—' 
         };
       });
@@ -75,6 +77,7 @@ export default function Activity() {
       .filter(r => (r.req_username || '').toLowerCase() === un || (r.assigned_to || '').toLowerCase() === unName)
       .map(r => {
         const isMine = (r.req_username || '').toLowerCase() === un;
+        const isTrust = r.priority_score === 90;
         return { 
           ...r, 
           type: 'Request', 
@@ -84,8 +87,8 @@ export default function Activity() {
           partner: isMine ? (r.assigned_to || '—') : (r.req_name || '—'), 
           partnerRole: isMine 
             ? (r.assigned_to ? (db.volunteers.some(v => v.vol_name === r.assigned_to) ? 'volunteer' : 'donor') : null) 
-            : 'receiver',
-          myRole: isMine ? 'receiver' : (db.volunteers.some(v => v.vol_name === appState.name) ? 'volunteer' : 'donor'),
+            : (isTrust ? 'trust' : 'receiver'),
+          myRole: isMine ? (isTrust ? 'trust' : 'receiver') : (db.volunteers.some(v => v.vol_name === appState.name) ? 'volunteer' : 'donor'),
           action: (isMine && r.status === 'pending') ? 'Cancel' : '—' 
         };
       });
@@ -188,7 +191,7 @@ export default function Activity() {
                            {act.partnerRole && (
                               <div style={{ 
                                 width: '8px', height: '8px', borderRadius: '50%', 
-                                background: act.partnerRole === 'donor' ? '#10b981' : (act.partnerRole === 'volunteer' ? '#fb923c' : '#3b82f6')
+                                background: act.partnerRole === 'donor' ? '#10b981' : (act.partnerRole === 'volunteer' ? '#fb923c' : (act.partnerRole === 'trust' ? '#eab308' : '#3b82f6'))
                               }}></div>
                            )}
                            {act.partner}

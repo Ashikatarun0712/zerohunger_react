@@ -11,7 +11,7 @@ export default function Trust() {
   const [trustDoc, setTrustDoc] = useState(null);
   const [reqType, setReqType] = useState('food');
   const [formData, setFormData] = useState({
-    treq_food_sel: '',
+    treq_item_name: '',
     treq_food_qty: '',
     treq_loc: '',
     treq_fund_amount: '',
@@ -44,6 +44,38 @@ export default function Trust() {
       setIsVerified(false);
     };
     rd.readAsDataURL(file);
+  };
+
+  const autoFillLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, treq_loc: 'Detecting...' }));
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`, {
+          headers: { 'User-Agent': 'ZeroHungerP2P/1.0', 'Accept-Language': 'en' }
+        });
+        const data = await response.json();
+        const address = data.address || {};
+        const area = address.suburb || address.neighbourhood || address.residential || address.village || '';
+        const city = address.city || address.town || address.county || address.state_district || '';
+        const combined = area ? `${area}, ${city}` : city || 'Unknown Location';
+        
+        setFormData(prev => ({ ...prev, treq_loc: combined }));
+      } catch (err) {
+        console.error("Reverse geocoding failed", err);
+        setFormData(prev => ({ ...prev, treq_loc: '' }));
+        alert("Failed to detect location automatically.");
+      }
+    }, () => {
+      setFormData(prev => ({ ...prev, treq_loc: '' }));
+      alert("Unable to retrieve your location. Please check browser permissions.");
+    });
   };
 
   const runCertVerification = async () => {
@@ -88,9 +120,8 @@ export default function Trust() {
     e.preventDefault();
     if (!supabaseClient) return alert('Supabase client not initialized');
     
-    if (reqType === 'food') {
-      const selectedDonation = db.donations.find(d => d.id.toString() === formData.treq_food_sel);
-      const foodName = selectedDonation ? selectedDonation.food_name : 'Bulk Food Request';
+    if (reqType === 'food' || reqType === 'material') {
+      const foodName = formData.treq_item_name || 'Bulk Request';
 
       const payload = {
         req_username: appState.user || 'trust_user',
@@ -100,21 +131,17 @@ export default function Trust() {
         location_label: formData.treq_loc,
         status: 'pending',
         urgency: 'High',
-        priority_score: 90 // High priority for trusts
+        priority_score: 90 // High priority indicates a Trust Bulk request without schema changes
       };
 
-      if (selectedDonation) {
-        payload.donation_id = selectedDonation.id;
-      }
-
       const { error } = await supabaseClient.from('requests').insert([payload]);
-      if (error) alert('Error submitting request');
-      else {
-        if (selectedDonation) {
-          await supabaseClient.from('donations').update({ status: 'requested' }).eq('id', selectedDonation.id);
-        }
-        alert('Food request published!');
+      if (error) {
+        console.error("Request insert error:", error);
+        alert('Error submitting request: ' + (error.message || JSON.stringify(error)));
+      } else {
+        alert(`${reqType === 'food' ? 'Food' : 'Material'} request published!`);
         syncDatabase();
+        setFormData({ ...formData, treq_item_name: '', treq_food_qty: '', treq_loc: '' });
       }
     } else {
       if (!isVerified) return alert('You must verify first!');
@@ -127,10 +154,13 @@ export default function Trust() {
         status: 'open'
       };
       const { error } = await supabaseClient.from('fund_requests').insert([payload]);
-      if (error) alert('Error submitting fund request');
-      else {
+      if (error) {
+        console.error("Fund request error:", error);
+        alert('Error submitting fund request: ' + (error.message || JSON.stringify(error)));
+      } else {
         alert('Fund request published!');
         syncDatabase();
+        setFormData({ ...formData, treq_fund_amount: '', treq_fund_purpose: '', treq_fund_upi: '' });
       }
     }
   };
@@ -223,27 +253,26 @@ export default function Trust() {
                 <label className="glass-label">Request Category *</label>
                 <select className="glass-input" value={reqType} onChange={(e) => setReqType(e.target.value)}>
                   <option value="food">🍱 Community Food Request</option>
+                  <option value="material">👕 Material / Non-Food Request</option>
                   <option value="funds">💰 Monetary Funding (Verified Only)</option>
                 </select>
               </div>
               
-              {reqType === 'food' ? (
+              {reqType === 'food' || reqType === 'material' ? (
                 <div id="treq-food-fields">
                   <div style={{ marginBottom: '15px' }}>
-                    <label className="glass-label">Requirement Details *</label>
-                    <select name="treq_food_sel" className="glass-input" value={formData.treq_food_sel} onChange={handleInputChange}>
-                      <option value="">-- Select Food Item --</option>
-                      {db.donations.filter(d => d.status === 'available').map(d => (
-                        <option key={d.id} value={d.id}>{d.food_name} ({d.quantity})</option>
-                      ))}
-                    </select>
+                    <label className="glass-label">{reqType === 'food' ? 'Food Requirement Details' : 'Material Requirement Details'} *</label>
+                    <input type="text" name="treq_item_name" className="glass-input" placeholder={reqType === 'food' ? "e.g. 50kg Rice, Cooked Meals..." : "e.g. Blankets, Clothes, Books..."} value={formData.treq_item_name} onChange={handleInputChange} required />
                   </div>
                   <div style={{ marginBottom: '15px' }}>
                     <label className="glass-label">Quantity / Beneficiaries *</label>
                     <input type="number" name="treq_food_qty" className="glass-input" placeholder="Units required" min="1" value={formData.treq_food_qty} onChange={handleInputChange} required />
                   </div>
                   <div style={{ marginBottom: '15px' }}>
-                    <label className="glass-label">Delivery Location *</label>
+                    <label className="glass-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      Delivery Location *
+                      <span style={{ cursor: 'pointer', color: '#38bdf8', fontSize: '0.8rem', fontWeight: 600 }} onClick={autoFillLocation}>📍 Auto Detect</span>
+                    </label>
                     <input type="text" name="treq_loc" className="glass-input" placeholder="e.g. Anna Nagar, Madurai" value={formData.treq_loc} onChange={handleInputChange} required />
                   </div>
                 </div>
@@ -290,10 +319,42 @@ export default function Trust() {
             <h3>Donation & Fulfillment Status</h3>
           </div>
           <div>
-            <div style={{ textAlign: 'center', padding: '40px', opacity: 0.5 }}>
-              <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📭</div>
-              <p style={{ margin: 0, fontSize: '0.95rem' }}>No donations or fulfillments recorded yet.</p>
-            </div>
+            {db.requests?.filter(r => r.req_username === appState.user && r.priority_score === 90).length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', opacity: 0.5 }}>
+                <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📭</div>
+                <p style={{ margin: 0, fontSize: '0.95rem' }}>No bulk food requests published yet.</p>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.05)', textAlign: 'left' }}>
+                    <th style={{ padding: '12px', borderBottom: '1px solid #334155' }}>Food / Item</th>
+                    <th style={{ padding: '12px', borderBottom: '1px solid #334155' }}>Qty Needed</th>
+                    <th style={{ padding: '12px', borderBottom: '1px solid #334155' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {db.requests?.filter(r => r.req_username === appState.user && r.priority_score === 90).map((req, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #1e293b' }}>
+                      <td style={{ padding: '12px' }}>{req.food_name}</td>
+                      <td style={{ padding: '12px', fontWeight: 'bold' }}>{req.quantity}</td>
+                      <td style={{ padding: '12px' }}>
+                        <span style={{ 
+                          padding: '4px 10px', 
+                          borderRadius: '20px', 
+                          fontSize: '0.8rem', 
+                          fontWeight: 600,
+                          background: req.status === 'pending' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                          color: req.status === 'pending' ? '#fbbf24' : '#34d399'
+                        }}>
+                          {req.status.toUpperCase()}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
