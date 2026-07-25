@@ -268,6 +268,8 @@ export default function Admin() {
     });
 
     if (chDonRef.current) {
+      const exist = Chart.getChart(chDonRef.current);
+      if (exist) exist.destroy();
       const c = new Chart(chDonRef.current, {
         type: 'line',
         data: {
@@ -287,6 +289,8 @@ export default function Admin() {
     }
     
     if (chReqRef.current) {
+      const exist = Chart.getChart(chReqRef.current);
+      if (exist) exist.destroy();
       const c = new Chart(chReqRef.current, {
         type: 'pie',
         data: {
