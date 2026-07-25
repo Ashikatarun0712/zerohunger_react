@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, supabaseClient } from '../store/AppContext';
 import { runExpiryPredictionLogic, loadMobileNet, mapMobileNetToFreshness, runOpenRouterFallback } from '../utils/aiEngine';
+import { playSuccessSound } from '../utils/audio';
 import LeafletMap from '../components/LeafletMap';
 
 export default function Donor() {
@@ -45,6 +46,9 @@ export default function Donor() {
   });
   const [otpSent, setOtpSent] = useState(false);
   const [otpInput, setOtpInput] = useState('');
+  
+  const [fulfillModal, setFulfillModal] = useState(null);
+  const [alertModal, setAlertModal] = useState(null);
   const massFileInputRef = React.useRef(null);
 
   useEffect(() => {
@@ -294,6 +298,7 @@ export default function Donor() {
       console.error('Donation insert error:', error);
       alert('Error submitting donation: ' + error.message);
     } else {
+      playSuccessSound();
       if (window.showToast) window.showToast('Donation successful!', 'ok');
       setFormData({ ...formData, food_name: '', quantity: '', mfg_date: '', expiry_date: '' });
       syncDatabase();
@@ -366,14 +371,23 @@ export default function Donor() {
     const donQty = linkedDonation.quantity;
     const maxFulfill = Math.min(reqQty, donQty);
     
-    const promptAmount = window.prompt(`You have ${donQty} units of "${linkedDonation.food_name}". This request needs ${reqQty} units.\nHow many units are you fulfilling?`, maxFulfill.toString());
+    setFulfillModal({
+      reqId, req, linkedDonation, reqQty, donQty, maxFulfill,
+      inputAmount: maxFulfill.toString()
+    });
+  };
+
+  const confirmFulfillment = async () => {
+    if (!fulfillModal) return;
+    const { reqId, req, linkedDonation, reqQty, donQty, inputAmount } = fulfillModal;
     
-    if (promptAmount === null) return; // User cancelled
-    
-    const fulfillAmount = parseInt(promptAmount);
+    const fulfillAmount = parseInt(inputAmount);
     if (isNaN(fulfillAmount) || fulfillAmount <= 0 || fulfillAmount > donQty) {
-      return alert("Invalid amount entered. Cannot exceed your available donation.");
+      setAlertModal({ title: 'Invalid Amount', message: 'Cannot exceed your available donation.', type: 'error' });
+      return;
     }
+    
+    setFulfillModal(null);
     
     const matchedQty = Math.min(fulfillAmount, reqQty);
     const isDonationFullyUsed = (fulfillAmount === donQty);
@@ -426,11 +440,12 @@ export default function Donor() {
         if (err5) throw err5;
       }
       
-      alert(`Handshake successful! Committed ${matchedQty} units.`);
+      playSuccessSound();
+      setAlertModal({ title: 'Handshake Successful! 🎉', message: `You have successfully committed ${matchedQty} units.`, type: 'success' });
       syncDatabase();
     } catch (err) {
       console.error(err);
-      alert("Error fulfilling request: " + (err.message || JSON.stringify(err)));
+      setAlertModal({ title: 'Error', message: "Error fulfilling request: " + (err.message || JSON.stringify(err)), type: 'error' });
     }
   };
 
@@ -446,6 +461,45 @@ export default function Donor() {
 
   return (
     <div className="page active">
+      {alertModal && (
+        <div className="modal-bg" style={{ zIndex: 10000, backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-box" style={{ width: '100%', maxWidth: '360px', background: 'white', borderRadius: '24px', padding: '24px', textAlign: 'center', animation: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '10px' }}>{alertModal.type === 'success' ? '🥳' : '⚠️'}</div>
+            <h3 style={{ margin: '0 0 10px 0', color: '#1e293b' }}>{alertModal.title}</h3>
+            <p style={{ color: '#475569', marginBottom: '20px' }}>{alertModal.message}</p>
+            <button className="btn btn-primary btn-full" onClick={() => setAlertModal(null)}>Awesome!</button>
+          </div>
+        </div>
+      )}
+
+      {fulfillModal && (
+        <div className="modal-bg" style={{ zIndex: 10000, backdropFilter: 'blur(12px)', background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-box" style={{ width: '100%', maxWidth: '400px', background: 'linear-gradient(135deg, #ffffff, #f8fafc)', borderRadius: '24px', padding: '30px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', animation: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '1.4rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🤝 Fulfill Request
+            </h3>
+            <div style={{ background: '#f1f5f9', padding: '15px', borderRadius: '12px', marginBottom: '20px' }}>
+              <p style={{ margin: '0 0 10px 0', color: '#334155', fontSize: '0.95rem' }}>
+                You have <strong>{fulfillModal.donQty} units</strong> of "{fulfillModal.linkedDonation.food_name}".<br/>
+                This request needs <strong>{fulfillModal.reqQty} units</strong>.
+              </p>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#0f172a' }}>How many units are you fulfilling?</label>
+              <input 
+                type="number" 
+                value={fulfillModal.inputAmount} 
+                onChange={(e) => setFulfillModal({ ...fulfillModal, inputAmount: e.target.value })}
+                style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '2px solid #3b82f6', fontSize: '1.1rem', background: '#fff' }}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn" style={{ flex: 1, background: '#e2e8f0', color: '#475569', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: 'bold' }} onClick={() => setFulfillModal(null)}>Cancel</button>
+              <button className="btn" style={{ flex: 1, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }} onClick={confirmFulfillment}>Confirm ✨</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="dash-wrap">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <button className="btn btn-outline btn-sm" onClick={() => navigate(-1)}>← Back</button>

@@ -12,6 +12,7 @@ export default function Login() {
   const [showAdminPopup, setShowAdminPopup] = useState(false);
   const [adminPwd, setAdminPwd] = useState('');
   const [adminErr, setAdminErr] = useState('');
+  const [showAdminPwd, setShowAdminPwd] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -81,35 +82,64 @@ export default function Login() {
   return (
     <div className="page active" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {showAdminPopup && (
-        <div className="modal-bg" style={{ zIndex: 9999, backdropFilter: 'blur(8px)', background: 'rgba(0,0,0,0.4)' }}>
-          <div className="modal-box" style={{ maxWidth: '350px', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.4)', boxShadow: '0 25px 50px rgba(0,0,0,0.15)', animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
-            <div className="modal-head" style={{ borderBottom: 'none', paddingBottom: '0' }}>
-              <div className="modal-title" style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.5rem' }}>⚙️</span> Admin Access
+        <div className="modal-bg" style={{ zIndex: 9999, backdropFilter: 'blur(12px)', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-box" style={{ width: '100%', maxWidth: '380px', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 40px 80px rgba(0,0,0,0.2)', animation: 'popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)', overflow: 'hidden', padding: 0 }}>
+            <div style={{ background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(241, 245, 249, 0.9))', padding: '24px', borderBottom: '1px solid rgba(226, 232, 240, 0.8)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(16, 185, 129, 0.25)' }}>
+                    <span style={{ fontSize: '1.2rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>⚙️</span>
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>Admin Access</h3>
+                </div>
+                <button onClick={() => setShowAdminPopup(false)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.8)', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background = '#f1f5f9'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.8)'}>✕</button>
               </div>
-              <button className="x-btn" onClick={() => setShowAdminPopup(false)}>✕</button>
             </div>
-            <div style={{ padding: '20px' }}>
-              <p style={{ color: 'var(--txt1)', fontSize: '0.85rem', marginBottom: '16px', marginTop: '0' }}>Enter master password to access system controls.</p>
+            
+            <div style={{ padding: '32px 24px' }}>
+              <p style={{ color: '#475569', fontSize: '0.95rem', marginBottom: '24px', marginTop: '0', lineHeight: 1.5 }}>Please authenticate with your master password to access secure system controls and platform data.</p>
+              
               <form onSubmit={(e) => {
                 e.preventDefault();
                 if (adminPwd === 'assara' || adminPwd === 'admin123') {
                   updateApp({ user: 'admin_sys', role: 'admin', name: 'System Admin', emoji: '⚙️', prevPage: 'admin' });
                   navigate('/admin');
                 } else {
-                  setAdminErr('Incorrect password');
+                  setAdminErr('Incorrect master password');
                 }
               }}>
-                <input 
-                  type="password" 
-                  autoFocus
-                  placeholder="Master password..." 
-                  value={adminPwd}
-                  onChange={e => { setAdminPwd(e.target.value); setAdminErr(''); }}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--border)', fontSize: '1rem', marginBottom: '10px', background: 'rgba(255,255,255,0.9)' }}
-                />
-                {adminErr && <div style={{ color: '#dc2626', fontSize: '0.8rem', marginBottom: '10px', fontWeight: 'bold' }}>{adminErr}</div>}
-                <button type="submit" className="btn btn-primary btn-full" style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)', border: 'none', color: 'white', padding: '10px' }}>Authenticate</button>
+                <div style={{ position: 'relative', marginBottom: adminErr ? '12px' : '24px' }}>
+                  <input 
+                    type={showAdminPwd ? "text" : "password"} 
+                    autoFocus
+                    placeholder="Enter master password..." 
+                    value={adminPwd}
+                    onChange={e => { setAdminPwd(e.target.value); setAdminErr(''); }}
+                    style={{ width: '100%', padding: '14px 45px 14px 16px', borderRadius: '12px', border: adminErr ? '2px solid #ef4444' : '2px solid #e2e8f0', fontSize: '1.05rem', background: '#f8fafc', color: '#0f172a', transition: 'all 0.2s', outline: 'none' }}
+                    onFocus={e => e.currentTarget.style.borderColor = adminErr ? '#ef4444' : '#10b981'}
+                    onBlur={e => e.currentTarget.style.borderColor = adminErr ? '#ef4444' : '#e2e8f0'}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowAdminPwd(!showAdminPwd)}
+                    style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', opacity: 0.6, padding: '4px', transition: 'opacity 0.2s' }}
+                    onMouseOver={e => e.currentTarget.style.opacity = '1'}
+                    onMouseOut={e => e.currentTarget.style.opacity = '0.6'}
+                    title={showAdminPwd ? "Hide password" : "Show password"}
+                  >
+                    {showAdminPwd ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                
+                {adminErr && (
+                  <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                    <span>⚠️</span> {adminErr}
+                  </div>
+                )}
+                
+                <button type="submit" style={{ width: '100%', background: 'linear-gradient(135deg, #0f172a, #1e293b)', border: 'none', color: 'white', padding: '14px', borderRadius: '12px', fontSize: '1.05rem', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', boxShadow: '0 10px 25px rgba(15, 23, 42, 0.3)' }} onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(15, 23, 42, 0.4)'; }} onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(15, 23, 42, 0.3)'; }}>
+                  🔐 Authenticate Access
+                </button>
               </form>
             </div>
           </div>

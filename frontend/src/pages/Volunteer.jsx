@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext, supabaseClient } from '../store/AppContext';
+import { playSuccessSound } from '../utils/audio';
 import LeafletMap from '../components/LeafletMap';
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -78,6 +79,7 @@ export default function Volunteer() {
     setAssignment(req.donation);
     generateSmartRoute(req.donation);
     syncDatabase();
+    playSuccessSound();
     setShowSuccessModal(true);
   };
 
