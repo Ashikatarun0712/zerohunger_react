@@ -39,7 +39,8 @@ function App() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [syncDatabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <LanguageProvider>

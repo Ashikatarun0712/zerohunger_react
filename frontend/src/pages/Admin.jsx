@@ -283,7 +283,7 @@ export default function Admin() {
             fill: true
           }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } } }
       });
       charts.push(c);
     }
@@ -305,6 +305,7 @@ export default function Admin() {
         options: { 
           responsive: true, 
           maintainAspectRatio: false,
+          animation: false,
           plugins: {
             legend: {
               position: 'top',
