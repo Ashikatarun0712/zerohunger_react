@@ -959,14 +959,14 @@ export default function Admin() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '28px' }}>
           <div className="card" style={{ borderTop: '4px solid #8b5cf6' }}>
             <div className="card-head"><h3>📈 Donation Velocity</h3></div>
-            <div className="card-body" style={{ height: '260px', padding: '16px' }}>
+            <div className="card-body" style={{ height: '260px', padding: '16px', position: 'relative' }}>
               <canvas ref={chDonRef}></canvas>
             </div>
           </div>
           
           <div className="card" style={{ borderTop: '4px solid #f59e0b' }}>
             <div className="card-head"><h3>📦 Platform Fulfillment & Status Distribution</h3></div>
-            <div className="card-body" style={{ height: '260px', padding: '16px' }}>
+            <div className="card-body" style={{ height: '260px', padding: '16px', position: 'relative' }}>
               <canvas ref={chReqRef}></canvas>
             </div>
           </div>
