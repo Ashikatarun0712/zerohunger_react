@@ -91,9 +91,17 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
       const uPartner = (partner || '').toLowerCase();
 
       let reqToUpdate = null;
-      if (activity && (activity.type === 'Request' || activity.req_username || activity.food_name)) {
-        reqToUpdate = activity;
-      } else {
+      let donToUpdate = null;
+
+      if (activity) {
+        if (activity.type === 'Request' || activity.req_username) {
+          reqToUpdate = (db.requests || []).find(r => r.id === activity.id) || activity;
+        } else if (activity.type === 'Donation' || activity.donor_username) {
+          donToUpdate = (db.donations || []).find(d => d.id === activity.id) || activity;
+        }
+      }
+
+      if (!reqToUpdate) {
         reqToUpdate = (db.requests || []).find(r => {
           const rUser = (r.req_username || r.req_name || '').toLowerCase();
           const rAssign = (r.assigned_to || r.claimed_by || '').toLowerCase();
@@ -101,10 +109,7 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
         });
       }
 
-      let donToUpdate = null;
-      if (activity && (activity.type === 'Donation' || activity.donor_username)) {
-        donToUpdate = activity;
-      } else {
+      if (!donToUpdate) {
         donToUpdate = (db.donations || []).find(d => {
           const dUser = (d.donor_username || d.donor_name || '').toLowerCase();
           const dClaim = (d.claimed_by || d.assigned_to || '').toLowerCase();
@@ -114,6 +119,9 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
 
       if (reqToUpdate && reqToUpdate.donation_id && !donToUpdate) {
         donToUpdate = (db.donations || []).find(d => d.id === reqToUpdate.donation_id);
+      }
+      if (donToUpdate && !reqToUpdate) {
+        reqToUpdate = (db.requests || []).find(r => r.donation_id === donToUpdate.id);
       }
 
       if (reqToUpdate && reqToUpdate.id) {

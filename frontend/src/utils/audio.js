@@ -42,3 +42,40 @@ export function playSuccessSound() {
     console.error("Audio playback failed:", err);
   }
 }
+
+export function playNotificationSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    
+    const ctx = new AudioContext();
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 0.5;
+    masterGain.connect(ctx.destination);
+    
+    const playTone = (freq, type, startTime, duration, vol = 1) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+      
+      gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
+      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(masterGain);
+      
+      osc.start(ctx.currentTime + startTime);
+      osc.stop(ctx.currentTime + startTime + duration);
+    };
+
+    // A subtle, pleasant notification chime (pop-up sound)
+    playTone(659.25, 'sine', 0.0, 0.15, 0.8); // E5
+    playTone(880.00, 'sine', 0.1, 0.3, 0.6); // A5
+    
+  } catch (err) {
+    console.error("Notification audio failed:", err);
+  }
+}

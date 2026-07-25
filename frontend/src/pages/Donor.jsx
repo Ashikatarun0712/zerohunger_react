@@ -33,6 +33,7 @@ export default function Donor() {
   const [isScanning, setIsScanning] = useState(false);
   const [mapMarker, setMapMarker] = useState(null);
   const [localityOptions, setLocalityOptions] = useState([]);
+  const [payUpiModal, setPayUpiModal] = useState(null);
 
   // Mass Event State
   const [showMassForm, setShowMassForm] = useState(false);
@@ -860,25 +861,36 @@ export default function Donor() {
           </div>
           <div className="card-body table-responsive" style={{ padding: 0 }}>
             <table className="tbl">
-              <thead><tr><th>Trust Name</th><th>Purpose</th><th>Amount</th><th>UPI ID</th><th>Action</th></tr></thead>
+              <thead><tr><th>Trust Name</th><th>Purpose</th><th>Target Amount</th><th>UPI ID</th><th>Action</th></tr></thead>
               <tbody>
-                {db.fund_requests.filter(f => f.status === 'active').length === 0 ? (
-                  <tr><td colSpan="5" className="empty">No active fund requests from Trusts.</td></tr>
+                {(db.fund_requests || []).filter(f => f.status === 'active' || f.status === 'open').length === 0 ? (
+                  <tr><td colSpan="5" className="empty">No active monetary fund requests from Trusts.</td></tr>
                 ) : (
-                  db.fund_requests.filter(f => f.status === 'active').map((f, i) => {
-                    const trust = db.trusts.find(t => t.trust_name === f.trust_name) || {};
-                    // Check if they are verified. If missing, assume verified for demo, but normally check trust.verification_status
-                    const isVerified = trust.verification_status === 'verified' || true; // Using true as fallback if trust row is missing locally
+                  (db.fund_requests || []).filter(f => f.status === 'active' || f.status === 'open').map((f, i) => {
+                    const trust = (db.trusts || []).find(t => t.trust_name === f.trust_name || t.trust_username === f.trust_username);
+                    const isVerified = trust ? trust.verification_status === 'verified' : true;
                     
                     return (
                       <tr key={i}>
                         <td style={{ fontWeight: 600 }}><span style={{ fontSize: '1.1rem' }}>🏛️</span> {f.trust_name}</td>
                         <td>{f.purpose}</td>
                         <td style={{ fontWeight: 700, color: 'var(--g2)' }}>₹{f.amount}</td>
-                        <td style={{ fontSize: '.8rem', color: 'var(--b1)' }}>{isVerified ? f.upi_id : '🔒 Hidden'}</td>
+                        <td style={{ fontSize: '.8rem', color: 'var(--b1)', fontFamily: 'monospace' }}>{isVerified ? f.upi_id : '🔒 Hidden'}</td>
                         <td>
                           {isVerified ? (
-                            <button className="btn btn-sm btn-primary" style={{ background: '#0ea5e9' }} onClick={() => generateUPIPayment(f.upi_id, f.trust_name, f.amount)}>💳 Pay via UPI</button>
+                            <button 
+                              className="btn btn-sm btn-primary" 
+                              style={{ background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', fontWeight: 600 }} 
+                              onClick={() => setPayUpiModal({
+                                trust_name: f.trust_name,
+                                upi_id: f.upi_id,
+                                req_amount: f.amount,
+                                purpose: f.purpose,
+                                customAmount: (f.amount || 500).toString()
+                              })}
+                            >
+                              💳 Pay via UPI
+                            </button>
                           ) : (
                             <button className="btn btn-sm btn-ghost" disabled>⏳ Pending Verification</button>
                           )}
@@ -891,6 +903,86 @@ export default function Donor() {
             </table>
           </div>
         </div>
+
+        {/* UPI Payment Redirect Modal with Custom Amount */}
+        {payUpiModal && (
+          <div className="modal-bg" style={{ zIndex: 9999 }}>
+            <div className="modal-box" style={{ maxWidth: '480px', width: '90%', animation: 'popIn 0.3s ease', padding: '24px' }}>
+              <div className="modal-head" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '16px' }}>
+                <div className="modal-title" style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  💳 Donate to {payUpiModal.trust_name}
+                </div>
+                <button className="x-btn" onClick={() => setPayUpiModal(null)}>✕</button>
+              </div>
+
+              <div style={{ background: 'var(--bg1)', padding: '14px', borderRadius: '12px', marginBottom: '16px', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--txt1)' }}>Purpose of Funds:</div>
+                <div style={{ fontWeight: 600, color: 'var(--txt)', fontSize: '0.95rem', marginTop: '2px' }}>{payUpiModal.purpose}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--txt1)', marginTop: '8px' }}>
+                  Official Trust UPI ID: <strong style={{ color: 'var(--b1)', fontFamily: 'monospace' }}>{payUpiModal.upi_id}</strong>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px', fontSize: '0.9rem', color: 'var(--txt)' }}>
+                  Enter Amount You Wish to Donate (₹) *
+                </label>
+                <input 
+                  type="number" 
+                  className="inp" 
+                  style={{ width: '100%', fontSize: '1.25rem', fontWeight: 700, padding: '10px 14px', borderRadius: '10px' }} 
+                  value={payUpiModal.customAmount}
+                  onChange={(e) => setPayUpiModal({ ...payUpiModal, customAmount: e.target.value })}
+                  placeholder="e.g. 500"
+                  min="1"
+                />
+                <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                  {[100, 250, 500, 1000, 2500].map(amt => (
+                    <button 
+                      key={amt} 
+                      type="button" 
+                      className="btn btn-sm"
+                      style={{ 
+                        borderRadius: '20px', 
+                        padding: '6px 14px', 
+                        fontSize: '0.85rem',
+                        background: 'var(--bg2)',
+                        color: 'var(--txt)',
+                        border: '1px solid var(--border)',
+                        fontWeight: 600,
+                        transition: 'all 0.2s ease',
+                        cursor: 'pointer'
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--p1)'; e.currentTarget.style.color = 'var(--p1)'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--txt)'; }}
+                      onClick={() => setPayUpiModal({ ...payUpiModal, customAmount: amt.toString() })}
+                    >
+                      + ₹{amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button 
+                type="button"
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '14px', fontSize: '1.05rem', fontWeight: 700, background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '12px', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)' }}
+                onClick={() => {
+                  playSuccessSound();
+                  const amt = parseFloat(payUpiModal.customAmount) || 100;
+                  const upiUri = `upi://pay?pa=${encodeURIComponent(payUpiModal.upi_id)}&pn=${encodeURIComponent(payUpiModal.trust_name)}&am=${encodeURIComponent(amt)}&cu=INR`;
+                  window.location.href = upiUri;
+                }}
+              >
+                📲 Pay ₹{payUpiModal.customAmount || 0} via Mobile UPI App
+              </button>
+
+              <div style={{ marginTop: '14px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--txt1)' }}>
+                Redirects automatically to installed UPI apps (Paytm, PhonePe, Google Pay, BHIM).
+              </div>
+            </div>
+          </div>
+        )}
           </>
         )}
       </div>

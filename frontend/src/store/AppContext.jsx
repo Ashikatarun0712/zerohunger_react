@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { playNotificationSound } from '../utils/audio';
 
 const SUPABASE_URL = 'https://gyfubwmalzsjtbmlyhgl.supabase.co';
 // Using the publishable key. Since RLS is disabled in Supabase, this will work perfectly.
@@ -89,9 +90,37 @@ export const AppProvider = ({ children }) => {
     document.documentElement.setAttribute('data-theme', activeTheme);
   }, [appState.theme]);
 
-  // Auto sync database on startup
+  // Auto sync database and run cron on startup
   useEffect(() => {
-    syncDatabase();
+    const runSystemCron = async () => {
+      try {
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        
+        // 1. Expire regular donations
+        const { data: donations } = await supabaseClient.from('donations').select('id, expiry_date').eq('status', 'available');
+        if (donations) {
+          const expiredDonations = donations.filter(d => d.expiry_date && d.expiry_date < todayStr);
+          for (const item of expiredDonations) {
+            await supabaseClient.from('donations').delete().eq('id', item.id);
+          }
+        }
+
+        // 2. Expire mass donations (event_time has passed)
+        // Note: checking 'active' status if present, but since we are deleting we can just select all
+        const { data: massEvents } = await supabaseClient.from('mass_donations').select('id, event_time');
+        if (massEvents) {
+          const expiredEvents = massEvents.filter(e => e.event_time && new Date(e.event_time) < now);
+          for (const item of expiredEvents) {
+            await supabaseClient.from('mass_donations').delete().eq('id', item.id);
+          }
+        }
+      } catch (err) {
+        console.error("Cron failed (missing columns or connection issue):", err);
+      }
+    };
+
+    runSystemCron().then(() => syncDatabase());
   }, []);
 
   const updateApp = (updates) => {
@@ -144,20 +173,41 @@ export const AppProvider = ({ children }) => {
         }
       });
 
-      setDb(prev => ({
-        ...prev,
-        donations: newDonations,
-        requests: reqRes.data || [],
-        volunteers: volRes.data || [],
-        ratings: ratRes.data || [],
-        trusts: combinedTrusts,
-        fund_requests: fundRes.data || [],
-        messages: msgRes.data || [],
-        platform_stats: statRes?.data || null,
-        notifications: notifRes.data || [],
-        mass_donations: massRes?.data || [],
-        users: fetchedUsers
-      }));
+      setDb(prev => {
+        const fetchedMessages = msgRes.data || [];
+        const fetchedNotifs = notifRes.data || [];
+        
+        // Notification Sound Logic
+        if (appState.user) {
+          const oldMyMsgs = prev.messages ? prev.messages.filter(m => m.receiver_username === appState.user).length : 0;
+          const newMyMsgs = fetchedMessages.filter(m => m.receiver_username === appState.user).length;
+          
+          const oldMyNotifs = prev.notifications ? prev.notifications.filter(n => n.user_id === appState.user).length : 0;
+          const newMyNotifs = fetchedNotifs.filter(n => n.user_id === appState.user).length;
+          
+          if (newMyMsgs > oldMyMsgs || newMyNotifs > oldMyNotifs) {
+            playNotificationSound();
+            if (window.showToast) {
+              window.showToast('You have a new message or notification!', 'ok');
+            }
+          }
+        }
+
+        return {
+          ...prev,
+          donations: newDonations,
+          requests: reqRes.data || [],
+          volunteers: volRes.data || [],
+          ratings: ratRes.data || [],
+          trusts: combinedTrusts,
+          fund_requests: fundRes.data || [],
+          messages: fetchedMessages,
+          platform_stats: statRes?.data || null,
+          notifications: fetchedNotifs,
+          mass_donations: massRes?.data || [],
+          users: fetchedUsers
+        };
+      });
     } catch (e) {
       console.error('Sync error:', e);
     }

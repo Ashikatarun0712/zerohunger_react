@@ -23,12 +23,28 @@ export default function Trust() {
   const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
-    const currentTrust = db.trusts?.find(t => (t.trust_username === appState.user || t.trust_name === appState.name));
-    if (currentTrust) {
-      setTrustDoc(currentTrust);
-      if (currentTrust.verification_status === 'verified') {
-        setIsVerified(true);
+    const un = (appState.user || '').toLowerCase();
+    const nm = (appState.name || '').toLowerCase();
+    
+    // Find all matching trust records for this user
+    const matchingTrusts = (db.trusts || []).filter(t => {
+      const tu = (t.trust_username || '').toLowerCase();
+      const tn = (t.trust_name || '').toLowerCase();
+      return (un && (tu === un || tn === un)) || (nm && (tu === nm || tn === nm));
+    });
+
+    if (matchingTrusts.length > 0) {
+      // Prioritize verified -> pending -> rejected
+      const verifiedDoc = matchingTrusts.find(t => t.verification_status === 'verified');
+      const pendingDoc = matchingTrusts.find(t => t.verification_status === 'pending');
+      const rejectedDoc = matchingTrusts.find(t => t.verification_status === 'rejected');
+
+      const activeDoc = verifiedDoc || pendingDoc || rejectedDoc || matchingTrusts[0];
+      setTrustDoc(activeDoc);
+      if (activeDoc.cert_url && !certImg) {
+        setCertImg(activeDoc.cert_url);
       }
+      setIsVerified(activeDoc.verification_status === 'verified');
     }
   }, [db.trusts, appState.user, appState.name]);
 
@@ -86,33 +102,46 @@ export default function Trust() {
       const result = await analyzeCertificate(certImg);
       setIsVerifying(false);
       
-      if (result && result.is_valid) {
-        setIsVerified(true);
-        if (!trustDoc || trustDoc.verification_status !== 'verified') {
-          await supabaseClient.from('trusts').insert([{
-            trust_username: appState.user || 'trust_user',
-            trust_name: result.trust_name || appState.name || 'Verified Trust',
-            reg_number: result.registration_id || 'AI-VERIFIED',
-            verification_status: 'verified'
-          }]);
-          syncDatabase();
-        }
-        alert(`Certificate Verified! Trust Name: ${result.trust_name || 'Verified'}, Reg ID: ${result.registration_id || 'N/A'}`);
+      const un = appState.user || 'trust_user';
+      const nm = result?.trust_name || appState.name || 'Trust Entity';
+      const reg = result?.registration_id || 'REG-DOC';
+      const status = (result && result.is_valid) ? 'verified' : 'pending';
+
+      // Check if record already exists in Supabase trusts table
+      const { data: existing } = await supabaseClient
+        .from('trusts')
+        .select('*')
+        .eq('trust_username', un);
+
+      if (existing && existing.length > 0) {
+        await supabaseClient.from('trusts').update({
+          trust_name: nm,
+          reg_number: reg,
+          verification_status: status,
+          cert_url: certImg
+        }).eq('trust_username', un);
       } else {
-        if (!trustDoc) {
-          await supabaseClient.from('trusts').insert([{
-            trust_username: appState.user || 'trust_user',
-            trust_name: appState.name || 'Pending Trust',
-            reg_number: 'PENDING-MANUAL',
-            verification_status: 'pending'
-          }]);
-          syncDatabase();
-        }
-        alert('Verification Failed or Inconclusive. Your document has been submitted for Manual Admin Verification. Please wait for an Admin to review.');
+        await supabaseClient.from('trusts').insert([{
+          trust_username: un,
+          trust_name: nm,
+          reg_number: reg,
+          verification_status: status,
+          cert_url: certImg
+        }]);
       }
-    } catch {
+
+      await syncDatabase();
+
+      if (status === 'verified') {
+        setIsVerified(true);
+        alert(`✨ Certificate AI Verified! Trust Name: ${nm}, Reg ID: ${reg}`);
+      } else {
+        alert('📄 Certificate submitted for Manual Admin Review. An Admin will inspect your certificate shortly.');
+      }
+    } catch (err) {
+      console.error(err);
       setIsVerifying(false);
-      alert('Verification Failed due to network error.');
+      alert('Verification process failed due to connection error.');
     }
   };
 
@@ -144,21 +173,21 @@ export default function Trust() {
         setFormData({ ...formData, treq_item_name: '', treq_food_qty: '', treq_loc: '' });
       }
     } else {
-      if (!isVerified) return alert('You must verify first!');
+      if (!isVerified) return alert('🔒 Monetary requests are locked! Your Trust registration certificate must be reviewed and approved by the Admin before requesting funds.');
       const payload = {
         trust_username: appState.user || 'trust_user',
         trust_name: appState.name || 'Trust Entity',
         purpose: formData.treq_fund_purpose,
         amount: parseFloat(formData.treq_fund_amount),
         upi_id: formData.treq_fund_upi,
-        status: 'open'
+        status: 'active'
       };
       const { error } = await supabaseClient.from('fund_requests').insert([payload]);
       if (error) {
         console.error("Fund request error:", error);
         alert('Error submitting fund request: ' + (error.message || JSON.stringify(error)));
       } else {
-        alert('Fund request published!');
+        alert('💰 Monetary fund request published successfully!');
         syncDatabase();
         setFormData({ ...formData, treq_fund_amount: '', treq_fund_purpose: '', treq_fund_upi: '' });
       }
@@ -199,6 +228,8 @@ export default function Trust() {
               <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '8px 16px', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid rgba(16, 185, 129, 0.3)' }}>✅ Verified Entity</span>
             ) : trustDoc?.verification_status === 'pending' ? (
               <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '8px 16px', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid rgba(56, 189, 248, 0.3)' }}>⏳ Pending Admin Verification</span>
+            ) : trustDoc?.verification_status === 'rejected' ? (
+              <span style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', padding: '8px 16px', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid rgba(239, 68, 68, 0.3)' }}>🚫 Application Rejected</span>
             ) : (
               <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', padding: '8px 16px', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid rgba(245, 158, 11, 0.3)' }}>⚠️ Unverified Entity</span>
             )}
@@ -215,6 +246,18 @@ export default function Trust() {
             <p style={{ fontSize: '.9rem', color: '#cbd5e1', marginBottom: '20px', lineHeight: 1.5 }}>
               Secure your organization's identity. Upload your official NGO/Trust registration certificate. Our AI will analyze the document authenticity instantly to unlock monetary fund requests.
             </p>
+
+            {trustDoc?.verification_status === 'rejected' && (
+              <div style={{ marginBottom: '20px', padding: '16px', background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.3)', lineHeight: 1.5 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '1.05rem', color: '#f87171', marginBottom: '4px' }}>
+                  🚫 Trust Registration Application Rejected
+                </div>
+                <div>
+                  Your Trust/NGO registration application was reviewed and <strong>REJECTED</strong> by the Admin. 
+                  Please re-upload a clear, valid registration certificate below to re-submit for verification.
+                </div>
+              </div>
+            )}
             
             <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => doCertUpload(e.target.files[0])} />
             <div className="upload-zone-premium" onClick={() => fileInputRef.current?.click()}>

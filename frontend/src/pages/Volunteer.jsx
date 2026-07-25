@@ -66,11 +66,11 @@ export default function Volunteer() {
     if (reqErr) return alert('Failed to accept job');
     
     const payload = {
-      vol_username: appState.user,
-      vol_name: appState.name || appState.user,
-      vehicle_type: 'Walk',
+      username: appState.user,
+      name: appState.name || appState.user,
+      vehicle: 'Walk',
       status: 'active',
-      assigned_req_id: req.id,
+      assigned_req: req.id,
       pickup_lat: req.donation?.lat,
       pickup_lng: req.donation?.lng
     };
@@ -175,9 +175,9 @@ export default function Volunteer() {
     if (!supabaseClient) return alert('Supabase client not initialized');
     
     const payload = {
-      vol_username: appState.user || '',
-      vol_name: formData.vol_name || appState.name || '',
-      vehicle_type: formData.vehicle_type,
+      username: appState.user || '',
+      name: formData.vol_name || appState.name || '',
+      vehicle: formData.vehicle_type,
       pickup_location: formData.vol_pickup,
       shift: formData.shift_sel,
       time_slot: formData.time_slot,

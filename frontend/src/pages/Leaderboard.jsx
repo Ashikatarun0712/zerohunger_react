@@ -61,7 +61,10 @@ export default function Leaderboard() {
     }
     
     // Only count completed deliveries where a volunteer was assigned
-    targetRequests = targetRequests.filter(r => r.status === 'completed' && r.assigned_to);
+    targetRequests = targetRequests.filter(r => {
+      const st = (r.status || '').toLowerCase();
+      return (st === 'completed' || st === 'fulfilled' || st === 'handshake_completed' || st === 'delivered') && r.assigned_to;
+    });
 
     const vStats = {};
     targetRequests.forEach(r => {
