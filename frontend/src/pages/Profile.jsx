@@ -112,15 +112,15 @@ export default function Profile() {
   }).filter(r => r.status === 'completed' || r.status === 'delivered').length;
 
   const myRatings = (db.ratings || []).filter(rt => {
-    const rated = (rt.rated_username || '').toLowerCase();
+    const rated = (rt.target_username || rt.rated_username || '').toLowerCase();
     return (un && rated === un) || (nameUn && rated === nameUn);
   });
   
   const avgRatingRaw = myRatings.length > 0 
-    ? myRatings.reduce((acc, rt) => acc + (rt.rating || 5), 0) / myRatings.length 
+    ? myRatings.reduce((acc, rt) => acc + (rt.score || rt.rating || 5), 0) / myRatings.length 
     : 0;
     
-  const displayRating = myRatings.length > 0 ? avgRatingRaw.toFixed(1) + ' ★' : 'New';
+  const displayRating = myRatings.length > 0 ? avgRatingRaw.toFixed(1) + ' ★' : '5.0 ★';
 
   const baseTrustScore = 40;
   const trustFromRatings = avgRatingRaw * 10;
@@ -372,7 +372,7 @@ export default function Profile() {
             <div className="cert-title">🏅 ZeroHungerVision AI System Status</div>
             <div className="cert-live-badge"><div className="cert-live-dot"></div>LIVE</div>
           </div>
-          <div className="cert-metrics" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+          <div className="cert-metrics">
             <div className="cert-metric"><div className="cert-metric-val">{totalSystemDonations}</div><div className="cert-metric-lbl">Donations</div></div>
             <div className="cert-metric"><div className="cert-metric-val">{avgFreshness}</div><div className="cert-metric-lbl">Avg Freshness</div></div>
             <div className="cert-metric"><div className="cert-metric-val">{platformSuccessRate}</div><div className="cert-metric-lbl">Success Rate</div></div>
@@ -403,7 +403,7 @@ export default function Profile() {
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
               <div style={{ fontSize: '.75rem', fontWeight: 700, opacity: .6, marginBottom: '2px' }}>
-                {finalTrustScore > 80 ? 'EXCELLENT' : finalTrustScore > 50 ? 'GOOD' : finalTrustScore > 0 ? 'NEEDS WORK' : 'NOT YET RATED'}
+                {finalTrustScore > 80 ? 'EXCELLENT' : finalTrustScore > 50 ? 'GOOD' : finalTrustScore > 0 ? 'NEEDS WORK' : 'NEWCOMER'}
               </div>
               <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '1.8rem', fontWeight: 800, color: 'var(--g1)' }}>
                 {finalTrustScore > 0 ? `${finalTrustScore}/100` : '--/100'}

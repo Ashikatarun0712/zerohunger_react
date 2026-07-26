@@ -78,10 +78,10 @@ export default function Activity() {
       // Submit Rating if applicable
       if (act.partner && act.partner !== '—') {
         const ratingPayload = {
-          rated_username: act.partner,
-          rater_username: appState.user,
-          rating: ratingValue,
-          review: ratingReview
+          target_username: act.partner,
+          score: ratingValue,
+          review: ratingReview,
+          category: act.myRole || 'community'
         };
         await supabaseClient.from('ratings').insert([ratingPayload]);
       }
