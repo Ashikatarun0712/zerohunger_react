@@ -66,15 +66,19 @@ export default function Volunteer() {
     if (reqErr) return alert('Failed to accept job');
     
     const payload = {
-      username: appState.user,
-      name: appState.name || appState.user,
-      vehicle: 'Walk',
+      vol_username: appState.user,
+      vol_name: appState.name || appState.user,
+      vehicle_type: 'Walk',
       status: 'active',
-      assigned_req: req.id,
+      assigned_req_id: req.id,
       pickup_lat: req.donation?.lat,
       pickup_lng: req.donation?.lng
     };
-    await supabaseClient.from('volunteers').insert([payload]);
+    const { error: volErr } = await supabaseClient.from('volunteers').insert([payload]);
+    if (volErr) {
+      console.error('Job accept error:', volErr);
+      return alert('Failed to accept job: ' + volErr.message);
+    }
     
     setAssignment(req.donation);
     generateSmartRoute(req.donation);
@@ -175,9 +179,9 @@ export default function Volunteer() {
     if (!supabaseClient) return alert('Supabase client not initialized');
     
     const payload = {
-      username: appState.user || '',
-      name: formData.vol_name || appState.name || '',
-      vehicle: formData.vehicle_type,
+      vol_username: appState.user || '',
+      vol_name: formData.vol_name || appState.name || '',
+      vehicle_type: formData.vehicle_type,
       pickup_location: formData.vol_pickup,
       shift: formData.shift_sel,
       time_slot: formData.time_slot,
@@ -186,7 +190,8 @@ export default function Volunteer() {
     
     const { error } = await supabaseClient.from('volunteers').insert([payload]);
     if (error) {
-      alert('Error registering volunteer');
+      console.error('Registration error:', error);
+      alert('Error registering volunteer: ' + error.message);
     } else {
       alert('Registered successfully!');
       
