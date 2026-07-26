@@ -157,6 +157,29 @@ export default function Profile() {
     }
   };
 
+  const calculateDynamicFreshness = (d) => {
+    const baseScore = d.freshness_score || 9;
+    if (!d.expiry_date || !d.created_at) return baseScore;
+    
+    try {
+      const createdTime = new Date(d.created_at).getTime();
+      const expiryTime = new Date(d.expiry_date).getTime();
+      const now = new Date().getTime();
+      
+      if (isNaN(createdTime) || isNaN(expiryTime)) return baseScore;
+      if (now >= expiryTime) return 0;
+      if (now <= createdTime) return baseScore;
+      
+      const totalDuration = expiryTime - createdTime;
+      const timeRemaining = expiryTime - now;
+      const ratio = timeRemaining / totalDuration;
+      
+      return Math.max(1, Math.round(baseScore * ratio * 10) / 10);
+    } catch {
+      return baseScore;
+    }
+  };
+
   return (
     <div className="page active" style={{ paddingBottom: '80px', display: 'flex', flexDirection: 'column' }}>
       
@@ -605,7 +628,7 @@ export default function Profile() {
                             <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px; color: #10b981;">🎁 ${d.food_name || 'Donation'}</div>
                             <div style="font-size: 12px; color: #4b5563;">Donor: <strong>${d.donor_name || d.donor_username || 'Donor'}</strong></div>
                             <div style="font-size: 12px; color: #4b5563; margin-bottom: 2px;">📦 ${d.quantity || 1} units</div>
-                            <div style="font-size: 12px; color: #4b5563;">🌿 Freshness: <strong>${d.freshness_score || 9}/10</strong></div>
+                            <div style="font-size: 12px; color: #4b5563;">🌿 Freshness: <strong>${calculateDynamicFreshness(d)}/10</strong></div>
                           </div>`,
                   type: 'donor' 
                 })),
