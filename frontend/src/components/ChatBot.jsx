@@ -179,8 +179,67 @@ IMPORTANT: You must reply entirely in the ISO language code: ${lang.toUpperCase(
 
   const sendMessage = () => sendMessageText(input);
 
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const pressTimer = useRef(null);
+  const dragRef = useRef({ startX: 0, startY: 0, currentX: 0, currentY: 0 });
+
+  const handlePointerDown = (e) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    
+    e.target.setPointerCapture(e.pointerId);
+    const startX = e.clientX;
+    const startY = e.clientY;
+    
+    // Save initial in case move clears it
+    dragRef.current.startX = startX;
+    dragRef.current.startY = startY;
+
+    pressTimer.current = setTimeout(() => {
+      setIsDragging(true);
+      dragRef.current = { startX, startY, currentX: position.x, currentY: position.y };
+      if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(50);
+      }
+    }, 2000);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging && pressTimer.current) {
+      const dx = Math.abs(e.clientX - dragRef.current.startX);
+      const dy = Math.abs(e.clientY - dragRef.current.startY);
+      if (dx > 10 || dy > 10) {
+        clearTimeout(pressTimer.current);
+        pressTimer.current = null;
+      }
+    }
+
+    if (isDragging) {
+      e.preventDefault();
+      const newX = dragRef.current.currentX + (e.clientX - dragRef.current.startX);
+      const newY = dragRef.current.currentY + (e.clientY - dragRef.current.startY);
+      setPosition({ x: newX, y: newY });
+    }
+  };
+
+  const handlePointerUp = (e) => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+    
+    if (isDragging) {
+      setIsDragging(false);
+      dragRef.current.currentX = position.x;
+      dragRef.current.currentY = position.y;
+      e.target.releasePointerCapture(e.pointerId);
+    } else {
+      setIsOpen(true);
+    }
+  };
+
   return (
-    <div className="chat-wrap">
+    <div className="chat-wrap" style={{ transform: isOpen ? 'none' : `translate(${position.x}px, ${position.y}px)`, touchAction: isDragging ? 'none' : 'auto', zIndex: isDragging ? 9999 : (isOpen ? 3000 : 500) }}>
       <div className={`chat-box ${isOpen ? 'open' : ''}`}>
         <div className="chat-head">
           <h4>🤖 ZeroHunger Assistant</h4>
@@ -242,7 +301,16 @@ IMPORTANT: You must reply entirely in the ISO language code: ${lang.toUpperCase(
         </div>
       </div>
       {!isOpen && (
-        <button className="chat-toggle" onClick={() => setIsOpen(true)}>🤖</button>
+        <button 
+          className={`chat-toggle ${isDragging ? 'dragging' : ''}`} 
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{ cursor: isDragging ? 'grabbing' : 'pointer', touchAction: 'none' }}
+        >
+          🤖
+        </button>
       )}
     </div>
   );

@@ -220,7 +220,7 @@ export default function P2PChatModal({ partner, partnerRole, currentUser, curren
               <span style={{ fontSize: '0.8rem', color: 'var(--txt1)', textTransform: 'capitalize' }}>{partnerRole}</span>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="responsive-flex" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {activity && activity.status !== 'completed' && !isComplete && currentUserRole !== 'volunteer' && partnerRole !== 'volunteer' && (
               <>
                 <button 

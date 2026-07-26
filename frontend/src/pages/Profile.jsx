@@ -177,7 +177,7 @@ export default function Profile() {
               </h3>
             </div>
             <div style={{ padding: '24px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }} className="responsive-grid">
                 <div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--txt2)', fontWeight: 600 }}>📍 LOCATION</div>
                   <div style={{ fontWeight: 500, color: 'var(--txt)' }}>{selectedEvent.place}</div>

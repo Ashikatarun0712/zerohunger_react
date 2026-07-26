@@ -276,11 +276,12 @@ h1,h2,h3,h4{font-family:'Bricolage Grotesque',sans-serif;line-height:1.2;letter-
 .spin{width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--g2);border-radius:50%;animation:spinner .7s linear infinite}
 @keyframes spinner{to{transform:rotate(360deg)}}
 @keyframes gpulse{0%{transform:scale(1);opacity:.6}70%{transform:scale(2.5);opacity:0}100%{transform:scale(2.5);opacity:0}}
-.chat-wrap{position:fixed;bottom:24px;right:24px;z-index:500;width:340px}
+.chat-wrap{position:fixed;bottom:24px;right:24px;z-index:500;width:340px;transition:transform 0.1s linear}
 .chat-toggle{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#10b981,#0ea5e9);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:30px;transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);margin-left:auto;position:relative;animation:floatChat 3s ease-in-out infinite;box-shadow:0 0 0 0 rgba(16,185,129,0.7)}
 .chat-toggle::before{content:'';position:absolute;inset:-6px;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#10b981);z-index:-1;opacity:0.6;filter:blur(10px);animation:pulseGlow 2.5s infinite alternate}
 .chat-toggle:hover{transform:scale(1.15) translateY(-5px);box-shadow:0 15px 35px rgba(14,165,233,0.5)}
 .chat-toggle:hover::before{opacity:1;filter:blur(14px)}
+.chat-toggle.dragging {animation:none!important;transform:scale(1.2)!important;box-shadow:0 0 40px rgba(16,185,129,0.9)!important;transition:none!important;}
 .chat-toggle::after{content:'';position:absolute;top:0;right:0;width:16px;height:16px;background:#ef4444;border:3px solid #fff;border-radius:50%;animation:pulseChatNotif 2s infinite}
 @keyframes pulseGlow{0%{transform:scale(0.9);opacity:0.4}100%{transform:scale(1.15);opacity:0.8}}
 @keyframes floatChat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
@@ -438,7 +439,7 @@ h1,h2,h3,h4{font-family:'Bricolage Grotesque',sans-serif;line-height:1.2;letter-
 .conf-fill.medium-food{background:linear-gradient(90deg,#f59e0b,#ef4444)}
 .conf-fill.spoiled-food{background:linear-gradient(90deg,#ef4444,#7f1d1d)}
 @media(max-width:768px){
-  .g2,.g3,.row2{grid-template-columns:1fr!important}
+  .g2,.g3,.row2,.responsive-grid{grid-template-columns:1fr!important}
   .navbar{padding:0 14px}
   .dash-wrap{padding:14px}
   .login-card{padding:28px 22px}
@@ -633,7 +634,7 @@ h1,h2,h3,h4{font-family:'Bricolage Grotesque',sans-serif;line-height:1.2;letter-
 .conf-fill.medium-food{background:linear-gradient(90deg,#f59e0b,#ef4444)}
 .conf-fill.spoiled-food{background:linear-gradient(90deg,#ef4444,#7f1d1d)}
 @media(max-width:768px){
-  .g2,.g3,.row2{grid-template-columns:1fr!important}
+  .g2,.g3,.row2,.responsive-grid{grid-template-columns:1fr!important}
   .navbar{padding:0 14px}
   .dash-wrap{padding:14px}
   .login-card{padding:28px 22px}
@@ -783,4 +784,22 @@ h1,h2,h3,h4{font-family:'Bricolage Grotesque',sans-serif;line-height:1.2;letter-
 
 [data-theme="dark"] .trust-new-card { background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 78, 59, 0.2)); border-color: rgba(16, 185, 129, 0.2); }
 [data-theme="dark"] .empty { color: var(--txt3); }
+
+/* Global Mobile Overrides */
+@media(max-width: 768px) {
+  .chat-wrap { width: auto !important; left: auto !important; right: 24px !important; }
+  .chat-box { position: fixed !important; bottom: 16px !important; right: 16px !important; left: 16px !important; width: calc(100vw - 32px) !important; height: 75vh !important; }
+  .responsive-flex { flex-wrap: wrap; justify-content: center; text-align: center; }
+  .responsive-flex > * { margin-bottom: 5px; }
+  h1 { font-size: 1.8rem !important; }
+  h2 { font-size: 1.5rem !important; }
+  h3 { font-size: 1.2rem !important; }
+  .stat-num { font-size: 1.8rem !important; }
+  .hm-count { font-size: 1.5rem !important; }
+  .modal-box { padding: 15px !important; }
+  .dash-wrap { padding: 10px !important; }
+  .card-body { padding: 16px !important; }
+  .module-grid { gap: 16px !important; }
+  .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl th, .tbl td { white-space: nowrap; }
 }
