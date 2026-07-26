@@ -481,6 +481,27 @@ export default function Admin() {
     setIsProcessing(false);
   };
 
+  const handleDeleteMassDonation = async (id) => {
+    if (!window.confirm('⚠️ Are you sure you want to delete this mass donation event?')) return;
+    setIsProcessing(true);
+    try {
+      const { error } = await supabaseClient.from('mass_donations').delete().eq('id', id);
+      if (error) throw error;
+      
+      setDb(prev => ({
+        ...prev,
+        mass_donations: (prev.mass_donations || []).filter(m => m.id !== id)
+      }));
+      await syncDatabase();
+      if (window.showToast) window.showToast('Mass donation event deleted.', 'ok');
+      else alert('Mass donation event deleted.');
+    } catch (e) {
+      console.error('Delete mass donation error:', e);
+      alert('Failed to delete mass donation: ' + (e.message || JSON.stringify(e)));
+    }
+    setIsProcessing(false);
+  };
+
   return (
     <div className="page active">
       {/* Notifications Modal */}
@@ -1056,6 +1077,57 @@ export default function Admin() {
                             🗑 Reject
                           </button>
                         </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Mass Donation Event Management */}
+        <div className="card" style={{ borderTop: '4px solid var(--p1)', marginTop: '28px' }}>
+          <div className="card-head" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)', paddingBottom: '16px' }}>
+            <h3>🎪 Mass Donation Panel</h3>
+            <span className="badge bg-b">Admin Access Level</span>
+          </div>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+            <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--txt1)' }}>
+              Manage ongoing mass donation events. Admins can remove inappropriate or completed mass events.
+            </p>
+          </div>
+          
+          <div className="card-body table-responsive" style={{ padding: 0 }}>
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Organiser Name</th>
+                  <th>Event Place</th>
+                  <th>Event Time</th>
+                  <th>Phone / Email</th>
+                  <th>Admin Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {!db.mass_donations || db.mass_donations.length === 0 ? (
+                  <tr><td colSpan="5" className="empty" style={{ padding: '40px' }}>No mass donation events available.</td></tr>
+                ) : (
+                  db.mass_donations.map(event => (
+                    <tr key={event.id}>
+                      <td style={{ fontWeight: 700, color: 'var(--txt)', fontSize: '1.05rem' }}>🎪 {event.organiser}</td>
+                      <td>{event.place}</td>
+                      <td>{new Date(event.event_time).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td>{event.phone_number}</td>
+                      <td>
+                        <button 
+                          className="btn btn-sm" 
+                          style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', fontWeight: 600 }} 
+                          onClick={() => handleDeleteMassDonation(event.id)} 
+                          disabled={isProcessing}
+                        >
+                          🗑 Remove
+                        </button>
                       </td>
                     </tr>
                   ))

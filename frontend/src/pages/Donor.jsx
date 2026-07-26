@@ -767,7 +767,17 @@ export default function Donor() {
                     </button>
                     <input type="file" ref={massFileInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => handleMassEventImgUpload(e.target.files[0])} />
                     {massEvent.event_photo_url && (
-                      <img src={massEvent.event_photo_url} alt="Event Place" style={{ height: '60px', width: 'auto', borderRadius: '4px', objectFit: 'cover' }} />
+                      <>
+                        <img src={massEvent.event_photo_url} alt="Event Place" style={{ height: '60px', width: 'auto', borderRadius: '4px', objectFit: 'cover' }} />
+                        <button 
+                          type="button" 
+                          className="btn btn-sm btn-outline" 
+                          style={{ borderColor: '#ef4444', color: '#ef4444' }} 
+                          onClick={() => setMassEvent({ ...massEvent, event_photo_url: '' })}
+                        >
+                          🗑 Remove
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
