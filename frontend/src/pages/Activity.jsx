@@ -18,6 +18,12 @@ export default function Activity() {
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
 
+  // Rating Modal State
+  const [ratingAct, setRatingAct] = useState(null);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [ratingReview, setRatingReview] = useState('');
+  const [isRating, setIsRating] = useState(false);
+
   const handleRefresh = async () => {
     setLoading(true);
     await syncDatabase();
@@ -51,19 +57,43 @@ export default function Activity() {
     }
   };
 
-  const handleMarkComplete = async (act) => {
-    if (!window.confirm("Mark this transaction as Completed?")) return;
+  const handleMarkComplete = (act) => {
+    setRatingAct(act);
+    setRatingValue(5);
+    setRatingReview('');
+  };
+
+  const handleRatingSubmit = async () => {
+    setIsRating(true);
     try {
+      const act = ratingAct;
       const table = act.type === 'Donation' ? 'donations' : 'requests';
+      
+      // Update status
       await supabaseClient.from(table).update({ status: 'completed' }).eq('id', act.id);
       if (act.donation_id) {
         await supabaseClient.from('donations').update({ status: 'completed' }).eq('id', act.donation_id).catch(() => {});
       }
+      
+      // Submit Rating if applicable
+      if (act.partner && act.partner !== '—') {
+        const ratingPayload = {
+          rated_username: act.partner,
+          rater_username: appState.user,
+          rating: ratingValue,
+          review: ratingReview
+        };
+        await supabaseClient.from('ratings').insert([ratingPayload]);
+      }
+      
       await syncDatabase();
-      if (window.showToast) window.showToast("🤝 Activity marked as completed!", "ok");
+      if (window.showToast) window.showToast("🤝 Activity marked as completed & rated!", "ok");
+      setRatingAct(null);
     } catch (e) {
       console.error(e);
-      alert("Failed to mark complete.");
+      alert("Failed to complete transaction.");
+    } finally {
+      setIsRating(false);
     }
   };
 
@@ -131,6 +161,53 @@ export default function Activity() {
   return (
     <div className="page active">
       
+      {/* Rating & Completion Modal */}
+      {ratingAct && (
+        <div className="modal-bg" style={{ zIndex: 4000 }}>
+          <div className="modal-box" style={{ maxWidth: '400px', animation: 'popIn 0.3s ease' }}>
+            <div className="modal-head">
+              <div className="modal-title" style={{ color: 'var(--g1)' }}>🌟 Rate & Complete</div>
+              <button className="x-btn" onClick={() => setRatingAct(null)}>✕</button>
+            </div>
+            <p style={{ fontSize: '0.9rem', color: 'var(--txt1)', marginBottom: '16px' }}>
+              You are about to mark this transaction as completed. How was your experience with <strong>{ratingAct.partner}</strong>?
+            </p>
+            
+            <div className="fg" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '2rem', display: 'flex', justifyContent: 'center', gap: '10px', cursor: 'pointer', marginBottom: '10px' }}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <span 
+                    key={star} 
+                    onClick={() => setRatingValue(star)}
+                    style={{ color: star <= ratingValue ? '#fbbf24' : 'var(--border)', transition: 'color 0.2s' }}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--txt2)' }}>{ratingValue} out of 5 stars</div>
+            </div>
+            
+            <div className="fg">
+              <label>Leave a review (optional)</label>
+              <textarea 
+                value={ratingReview} 
+                onChange={e => setRatingReview(e.target.value)}
+                placeholder="Great communication, very helpful..."
+                style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--txt)', resize: 'none' }}
+              ></textarea>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setRatingAct(null)}>Cancel</button>
+              <button className="btn btn-primary" style={{ flex: 1, background: '#10b981', color: '#fff', borderColor: '#10b981' }} onClick={handleRatingSubmit} disabled={isRating}>
+                {isRating ? 'Submitting...' : 'Submit & Complete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cancel Modal (Glassmorphism & Premium UI) */}
       {cancelAct && (
         <div className="modal-bg" style={{ zIndex: 4000 }}>

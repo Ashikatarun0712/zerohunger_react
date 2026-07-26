@@ -43,7 +43,8 @@ export default function Donor() {
     organiser: appState.name || '',
     phone_number: '', // Used to store Email Address now based on request
     is_phone_verified: false,
-    event_photo_url: ''
+    event_photo_url: '',
+    additional_info: ''
   });
   const [otpSent, setOtpSent] = useState(false);
   const [otpInput, setOtpInput] = useState('');
@@ -333,7 +334,8 @@ export default function Donor() {
       organiser: massEvent.organiser,
       phone_number: massEvent.phone_number, // Stores email now
       is_phone_verified: massEvent.is_phone_verified,
-      event_photo_url: massEvent.event_photo_url
+      event_photo_url: massEvent.event_photo_url,
+      additional_info: massEvent.additional_info
     };
     
     const { error } = await supabaseClient.from('mass_donations').insert([payload]);
@@ -342,7 +344,7 @@ export default function Donor() {
       alert('Error submitting mass event: ' + error.message);
     } else {
       if (window.showToast) window.showToast('Mass Donation Event Created!', 'ok');
-      setMassEvent({ ...massEvent, place: '', event_time: '', phone_number: '', is_phone_verified: false, event_photo_url: '' });
+      setMassEvent({ ...massEvent, place: '', event_time: '', phone_number: '', is_phone_verified: false, event_photo_url: '', additional_info: '' });
       setOtpSent(false);
       setOtpInput('');
       setShowMassForm(false);
@@ -780,6 +782,16 @@ export default function Donor() {
                       </>
                     )}
                   </div>
+                </div>
+
+                <div className="fg">
+                  <label>Additional Information (Optional)</label>
+                  <textarea 
+                    value={massEvent.additional_info} 
+                    onChange={(e) => setMassEvent({ ...massEvent, additional_info: e.target.value })} 
+                    placeholder="Provide any extra details about the event, what to bring, exact directions, etc."
+                    style={{ width: '100%', minHeight: '80px', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--txt)', resize: 'vertical' }}
+                  />
                 </div>
 
                 <button type="submit" className="btn btn-primary btn-full" style={{ background: 'var(--p1)' }}>📢 Post Mass Event</button>

@@ -62,7 +62,18 @@ export const AppProvider = ({ children }) => {
     }
   });
 
-  const [appState, setAppState] = useState(initialAPP);
+  const [appState, setAppState] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('zh_app_state');
+      return stored ? JSON.parse(stored) : initialAPP;
+    } catch {
+      return initialAPP;
+    }
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('zh_app_state', JSON.stringify(appState));
+  }, [appState]);
 
   const [registry, setRegistry] = useState(() => {
     try {

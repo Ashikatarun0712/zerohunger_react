@@ -17,6 +17,7 @@ export default function Profile() {
   const [editPush, setEditPush] = useState(appState.pushEnabled !== false);
   const [editTheme, setEditTheme] = useState(appState.theme || 'system');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const handleLogout = () => {
     updateApp({ user: null, role: null, name: null });
@@ -105,6 +106,28 @@ export default function Profile() {
     return (un && (rUser === un || rName === un)) || (nameUn && (rUser === nameUn || rName === nameUn));
   }).length;
 
+  const myDeliveries = (db.requests || []).filter(r => {
+    const assigned = (r.assigned_to || '').toLowerCase();
+    return (un && assigned === un) || (nameUn && assigned === nameUn);
+  }).filter(r => r.status === 'completed' || r.status === 'delivered').length;
+
+  const myRatings = (db.ratings || []).filter(rt => {
+    const rated = (rt.rated_username || '').toLowerCase();
+    return (un && rated === un) || (nameUn && rated === nameUn);
+  });
+  
+  const avgRatingRaw = myRatings.length > 0 
+    ? myRatings.reduce((acc, rt) => acc + (rt.rating || 5), 0) / myRatings.length 
+    : 0;
+    
+  const displayRating = myRatings.length > 0 ? avgRatingRaw.toFixed(1) + ' ★' : 'New';
+
+  const baseTrustScore = 40;
+  const trustFromRatings = avgRatingRaw * 10;
+  const trustFromActivity = (myDons * 2) + (myDeliveries * 2);
+  const rawTrustScore = Math.floor(baseTrustScore + trustFromRatings + trustFromActivity);
+  const finalTrustScore = myRatings.length === 0 && myDons === 0 && myDeliveries === 0 ? 0 : Math.min(100, rawTrustScore);
+
   // Real system-wide cert metrics derived from database
   const totalSystemDonations = db.donations?.length || 0;
   const expiredCount = (db.donations || []).filter(d => d.status === 'expired').length;
@@ -112,6 +135,12 @@ export default function Profile() {
   const avgFreshness = (db.donations || []).length > 0 
     ? ((db.donations || []).reduce((acc, d) => acc + (Number(d.freshness_score) || 8.5), 0) / db.donations.length).toFixed(1)
     : '8.5';
+    
+  const totalSystemRequests = db.requests?.length || 0;
+  const completedSystemRequests = (db.requests || []).filter(r => r.status === 'completed' || r.status === 'delivered').length;
+  const platformSuccessRate = totalSystemRequests > 0 
+    ? Math.round((completedSystemRequests / totalSystemRequests) * 100) + '%'
+    : 'N/A';
 
   const myNotifications = (db.notifications || []).filter(n => (n.user_username || '').toLowerCase() === un).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const unreadCount = myNotifications.filter(n => !n.is_read).length;
@@ -129,7 +158,56 @@ export default function Profile() {
   };
 
   return (
-    <div className="page active">
+    <div className="page active" style={{ paddingBottom: '80px', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* Mass Event Details Modal */}
+      {selectedEvent && (
+        <div className="modal-bg" style={{ zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-box" style={{ maxWidth: '500px', width: '90%', padding: '0', overflow: 'hidden', animation: 'popIn 0.3s ease' }}>
+            <div style={{ position: 'relative', height: '180px', background: 'var(--border)' }}>
+              {selectedEvent.event_photo_url ? (
+                <img src={selectedEvent.event_photo_url} alt="Event" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)' }}>🎪</div>
+              )}
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' }}></div>
+              <button className="x-btn" onClick={() => setSelectedEvent(null)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)', color: '#fff' }}>✕</button>
+              <h3 style={{ position: 'absolute', bottom: '15px', left: '20px', color: '#fff', margin: 0, fontSize: '1.4rem', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                {selectedEvent.organiser}'s Event
+              </h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--txt2)', fontWeight: 600 }}>📍 LOCATION</div>
+                  <div style={{ fontWeight: 500, color: 'var(--txt)' }}>{selectedEvent.place}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--txt2)', fontWeight: 600 }}>⏰ TIME</div>
+                  <div style={{ fontWeight: 500, color: 'var(--txt)' }}>{new Date(selectedEvent.event_time).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--txt2)', fontWeight: 600 }}>📞 CONTACT</div>
+                  <div style={{ fontWeight: 500, color: 'var(--txt)' }}>
+                    {selectedEvent.phone_number} 
+                    {selectedEvent.is_phone_verified && <span style={{ marginLeft: '6px', fontSize: '0.7rem', background: '#ecfdf5', color: '#059669', padding: '2px 6px', borderRadius: '4px', border: '1px solid #a7f3d0' }}>Verified ✓</span>}
+                  </div>
+                </div>
+              </div>
+              
+              {selectedEvent.additional_info && (
+                <div style={{ background: 'var(--bg1)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--g1)', fontWeight: 700, marginBottom: '8px' }}>📝 Additional Information</div>
+                  <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', color: 'var(--txt1)', whiteSpace: 'pre-wrap' }}>
+                    {selectedEvent.additional_info}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Settings Modal */}
       {showSettings && (
         <div className="modal-bg">
@@ -280,8 +358,8 @@ export default function Profile() {
             <>
               <div className="stat-card"><div className="stat-num">{myDons}</div><div className="stat-lbl">Donations</div></div>
               <div className="stat-card"><div className="stat-num">{myReqs}</div><div className="stat-lbl">Requests</div></div>
-              <div className="stat-card"><div className="stat-num">7</div><div className="stat-lbl">Volunteers</div></div>
-              <div className="stat-card"><div className="stat-num">91%</div><div className="stat-lbl">AI Score</div></div>
+              <div className="stat-card"><div className="stat-num">{myDeliveries}</div><div className="stat-lbl">Deliveries</div></div>
+              <div className="stat-card"><div className="stat-num">{displayRating}</div><div className="stat-lbl">My Rating</div></div>
             </>
           )}
         </div>
@@ -297,7 +375,7 @@ export default function Profile() {
           <div className="cert-metrics" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
             <div className="cert-metric"><div className="cert-metric-val">{totalSystemDonations}</div><div className="cert-metric-lbl">Donations</div></div>
             <div className="cert-metric"><div className="cert-metric-val">{avgFreshness}</div><div className="cert-metric-lbl">Avg Freshness</div></div>
-            <div className="cert-metric"><div className="cert-metric-val">94%</div><div className="cert-metric-lbl">AI Accuracy</div></div>
+            <div className="cert-metric"><div className="cert-metric-val">{platformSuccessRate}</div><div className="cert-metric-lbl">Success Rate</div></div>
             <div className="cert-metric"><div className="cert-metric-val">{totalMealsSaved}</div><div className="cert-metric-lbl">Meals Saved</div></div>
             <div className="cert-metric"><div className="cert-metric-val" style={{ color: '#ef4444' }}>{expiredCount}</div><div className="cert-metric-lbl">Food Wasted 🗑️</div></div>
           </div>
@@ -324,8 +402,12 @@ export default function Profile() {
               </div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ fontSize: '.75rem', fontWeight: 700, opacity: .6, marginBottom: '2px' }}>NOT YET RATED</div>
-              <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '1.8rem', fontWeight: 800, color: 'var(--g1)' }}>--/100</div>
+              <div style={{ fontSize: '.75rem', fontWeight: 700, opacity: .6, marginBottom: '2px' }}>
+                {finalTrustScore > 80 ? 'EXCELLENT' : finalTrustScore > 50 ? 'GOOD' : finalTrustScore > 0 ? 'NEEDS WORK' : 'NOT YET RATED'}
+              </div>
+              <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: '1.8rem', fontWeight: 800, color: 'var(--g1)' }}>
+                {finalTrustScore > 0 ? `${finalTrustScore}/100` : '--/100'}
+              </div>
             </div>
           </div>
         </div>
@@ -440,6 +522,7 @@ export default function Profile() {
                   }}
                   onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 12px 25px rgba(139, 92, 246, 0.2)'; }}
                   onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.05)'; }}
+                  onClick={() => setSelectedEvent(event)}
                   >
                     {/* Status Badge */}
                     <div style={{

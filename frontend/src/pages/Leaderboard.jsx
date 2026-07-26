@@ -68,14 +68,27 @@ export default function Leaderboard() {
 
     const vStats = {};
     targetRequests.forEach(r => {
-      const vName = r.assigned_to;
-      const key = vName.toLowerCase();
+      if (!r.assigned_to) return;
+      
+      const vUsername = r.assigned_to;
+      const key = vUsername.toLowerCase();
       const isMe = key === (appState.user || '').toLowerCase() || key === (appState.name || '').toLowerCase();
       
       if (!vStats[key]) {
+        // Try to resolve the real name from volunteers or users table
+        let realName = vUsername;
+        const volRecord = (db.volunteers || []).find(v => v.vol_username?.toLowerCase() === key);
+        const userRecord = (db.users || []).find(u => u.username?.toLowerCase() === key);
+        
+        if (volRecord && volRecord.vol_name) {
+          realName = volRecord.vol_name;
+        } else if (userRecord && userRecord.name) {
+          realName = userRecord.name;
+        }
+
         vStats[key] = {
-          username: vName,
-          name: vName,
+          username: vUsername,
+          name: realName,
           totalScore: 0,
           deliveriesCount: 0,
           isMe

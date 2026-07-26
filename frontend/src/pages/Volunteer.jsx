@@ -29,7 +29,6 @@ export default function Volunteer() {
     time_slot: ''
   });
 
-  const [parkingState, setParkingState] = useState([]);
   const [assignment, setAssignment] = useState(null);
   const [routeData, setRouteData] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -41,6 +40,9 @@ export default function Volunteer() {
     // Exclude completed, cancelled, or expired jobs
     if (req.status === 'completed' || req.status === 'expired' || req.status === 'cancelled') return false;
     
+    // Ghost jobs: exclude requests without a linked donation
+    if (!req.donation_id) return false;
+
     // If a volunteer has already claimed this specific request, hide it
     const hasVolunteer = (db.volunteers || []).some(v => v.assigned_req_id === req.id) || Boolean(req.assigned_to);
     if (hasVolunteer) return false;
@@ -65,19 +67,33 @@ export default function Volunteer() {
     const { error: reqErr } = await supabaseClient.from('requests').update({ assigned_to: appState.user }).eq('id', req.id);
     if (reqErr) return alert('Failed to accept job');
     
+    // Check if the user is already a registered volunteer
+    const existingVol = (db.volunteers || []).find(v => v.vol_username === appState.user);
+    
     const payload = {
       vol_username: appState.user,
       vol_name: appState.name || appState.user,
-      vehicle_type: 'Walk',
+      vehicle_type: existingVol ? existingVol.vehicle_type : (formData.vehicle_type || 'Walk'),
       status: 'active',
       assigned_req_id: req.id,
       pickup_lat: req.donation?.lat,
       pickup_lng: req.donation?.lng
     };
-    const { error: volErr } = await supabaseClient.from('volunteers').insert([payload]);
-    if (volErr) {
-      console.error('Job accept error:', volErr);
-      return alert('Failed to accept job: ' + volErr.message);
+
+    if (existingVol) {
+      // Update existing volunteer profile to prevent duplicates
+      const { error: volErr } = await supabaseClient.from('volunteers').update(payload).eq('id', existingVol.id);
+      if (volErr) {
+        console.error('Job accept update error:', volErr);
+        return alert('Failed to accept job: ' + volErr.message);
+      }
+    } else {
+      // Insert new volunteer profile
+      const { error: volErr } = await supabaseClient.from('volunteers').insert([payload]);
+      if (volErr) {
+        console.error('Job accept insert error:', volErr);
+        return alert('Failed to accept job: ' + volErr.message);
+      }
     }
     
     setAssignment(req.donation);
@@ -86,10 +102,6 @@ export default function Volunteer() {
     playSuccessSound();
     setShowSuccessModal(true);
   };
-
-  useEffect(() => {
-    initParkingState();
-  }, []);
 
   const autoFillLocation = () => {
     if (!navigator.geolocation) {
@@ -137,34 +149,6 @@ export default function Volunteer() {
     return ['6:00 PM - 9:00 PM', '9:00 PM - 12:00 AM'];
   };
 
-  const initParkingState = () => {
-    const hour = new Date().getHours();
-    const isPeak = (hour >= 9 && hour <= 11) || (hour >= 13 && hour <= 15) || (hour >= 17 && hour <= 19);
-    const occupyChance = isPeak ? 0.7 : 0.4;
-    
-    const state = Array.from({ length: 15 }, (_, i) => ({
-      id: i + 1,
-      label: `${String.fromCharCode(65 + Math.floor(i / 5))}${(i % 5) + 1}`,
-      occupied: Math.random() < occupyChance,
-      reserved: false
-    }));
-    
-    setParkingState(state);
-  };
-
-  const scanParking = () => {
-    initParkingState();
-  };
-
-  const toggleParkSlot = (id) => {
-    setParkingState(prev => prev.map(s => {
-      if (s.id === id && !s.occupied) {
-        return { ...s, reserved: !s.reserved };
-      }
-      return s;
-    }));
-  };
-
   const generateSmartRoute = (assignedDonation) => {
     if (!assignedDonation) return;
     const uLat = appState.userLat || 9.9252;
@@ -193,14 +177,7 @@ export default function Volunteer() {
       console.error('Registration error:', error);
       alert('Error registering volunteer: ' + error.message);
     } else {
-      alert('Registered successfully!');
-      
-      // Mock AI assignment
-      const availableDonations = db.donations.filter(d => d.status === 'available');
-      if (availableDonations.length > 0) {
-        setAssignment(availableDonations[0]);
-        generateSmartRoute(availableDonations[0]);
-      }
+      alert('Registered successfully! Please browse nearby jobs below to start delivering.');
       syncDatabase();
     }
   };
@@ -335,29 +312,6 @@ export default function Volunteer() {
                     ))}
                   </div>
                 )}
-              </div>
-            </div>
-            
-            <div className="card">
-              <div className="card-head"><h3>🅿️ Volunteer Parking Radar</h3><span className="badge bg-t">Visual AI</span></div>
-              <div className="card-body" style={{ padding: '14px' }}>
-                <div className="radar-pulse"></div>
-                <div className="parking-radar-wrap">
-                  <div className="parking-radar">
-                    {parkingState.map((s) => {
-                      let cls = 'empty', icon = 'P';
-                      if (s.occupied) { cls = 'occupied'; icon = '🚗'; }
-                      else if (s.reserved) { cls = 'selected'; icon = '✅'; }
-                      return (
-                        <div key={s.id} className={`park-slot ${cls}`} onClick={() => toggleParkSlot(s.id)}>
-                          <div style={{ fontSize: s.occupied ? '1rem' : '.9rem' }}>{icon}</div>
-                          <div className="park-slot-label">{s.label}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <button type="button" className="btn btn-outline btn-sm btn-full" style={{ marginTop: '10px' }} onClick={scanParking}>🔄 Rescan Parking Slots</button>
               </div>
             </div>
             

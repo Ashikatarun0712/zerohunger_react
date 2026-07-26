@@ -36,7 +36,14 @@ export default function Login() {
       if (dbError || !data) {
         setError('Invalid credentials');
       } else {
-        updateApp({ user: data.username, role: data.role, name: data.name, prevPage: 'profile', emoji: data.emoji || '👤' });
+        updateApp({ 
+          user: data.username, 
+          role: data.role, 
+          name: data.name, 
+          prevPage: 'profile', 
+          emoji: data.emoji || '👤',
+          profile_image_url: data.profile_image_url
+        });
         navigate('/profile');
       }
     } catch {
