@@ -985,22 +985,31 @@ export default function Donor() {
                 </div>
               </div>
 
-              <button 
-                type="button"
-                className="btn btn-primary"
-                style={{ width: '100%', padding: '14px', fontSize: '1.05rem', fontWeight: 700, background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '12px', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)' }}
-                onClick={() => {
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button type="button" className="btn" style={{ padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: '#fff', color: '#1a73e8', border: '1px solid #1a73e8', borderRadius: '12px' }} onClick={() => {
                   playSuccessSound();
                   const amt = parseFloat(payUpiModal.customAmount) || 100;
-                  const upiUri = `upi://pay?pa=${encodeURIComponent(payUpiModal.upi_id)}&pn=${encodeURIComponent(payUpiModal.trust_name)}&am=${encodeURIComponent(amt)}&cu=INR`;
-                  window.location.href = upiUri;
-                }}
-              >
-                📲 Pay ₹{payUpiModal.customAmount || 0} via Mobile UPI App
-              </button>
+                  window.location.href = `tez://upi/pay?pa=${encodeURIComponent(payUpiModal.upi_id)}&pn=${encodeURIComponent(payUpiModal.trust_name)}&am=${encodeURIComponent(amt)}&cu=INR`;
+                }}>Google Pay</button>
+                <button type="button" className="btn" style={{ padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: '#fff', color: '#5e17eb', border: '1px solid #5e17eb', borderRadius: '12px' }} onClick={() => {
+                  playSuccessSound();
+                  const amt = parseFloat(payUpiModal.customAmount) || 100;
+                  window.location.href = `phonepe://pay?pa=${encodeURIComponent(payUpiModal.upi_id)}&pn=${encodeURIComponent(payUpiModal.trust_name)}&am=${encodeURIComponent(amt)}&cu=INR`;
+                }}>PhonePe</button>
+                <button type="button" className="btn" style={{ padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: '#fff', color: '#00baf2', border: '1px solid #00baf2', borderRadius: '12px' }} onClick={() => {
+                  playSuccessSound();
+                  const amt = parseFloat(payUpiModal.customAmount) || 100;
+                  window.location.href = `paytmmp://pay?pa=${encodeURIComponent(payUpiModal.upi_id)}&pn=${encodeURIComponent(payUpiModal.trust_name)}&am=${encodeURIComponent(amt)}&cu=INR`;
+                }}>Paytm</button>
+                <button type="button" className="btn" style={{ padding: '12px', fontSize: '0.95rem', fontWeight: 700, background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: '12px' }} onClick={() => {
+                  playSuccessSound();
+                  const amt = parseFloat(payUpiModal.customAmount) || 100;
+                  window.location.href = `upi://pay?pa=${encodeURIComponent(payUpiModal.upi_id)}&pn=${encodeURIComponent(payUpiModal.trust_name)}&am=${encodeURIComponent(amt)}&cu=INR`;
+                }}>Other UPI</button>
+              </div>
 
               <div style={{ marginTop: '14px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--txt1)' }}>
-                Redirects automatically to installed UPI apps (Paytm, PhonePe, Google Pay, BHIM).
+                Select your preferred app. "Other UPI" may redirect to WhatsApp on some devices.
               </div>
             </div>
           </div>

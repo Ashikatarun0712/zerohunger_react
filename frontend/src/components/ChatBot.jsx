@@ -201,14 +201,14 @@ IMPORTANT: You must reply entirely in the ISO language code: ${lang.toUpperCase(
       if (window.navigator && window.navigator.vibrate) {
         window.navigator.vibrate(50);
       }
-    }, 2000);
+    }, 1000);
   };
 
   const handlePointerMove = (e) => {
     if (!isDragging && pressTimer.current) {
       const dx = Math.abs(e.clientX - dragRef.current.startX);
       const dy = Math.abs(e.clientY - dragRef.current.startY);
-      if (dx > 10 || dy > 10) {
+      if (dx > 20 || dy > 20) {
         clearTimeout(pressTimer.current);
         pressTimer.current = null;
       }
